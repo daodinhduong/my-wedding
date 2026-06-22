@@ -4,6 +4,7 @@ export default defineNuxtConfig({
   modules: ['@nuxt/eslint'],
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL || 'postgres://nuxt:nuxt@localhost:5432/nuxt_app',
+    adminPassword: process.env.ADMIN_PASSWORD || '',
     public: {
       appName: 'Nuxt 4 SQL Docker'
     }

@@ -4,6 +4,7 @@ create table if not exists wedding_responses (
   wish_message text,
   attendance_status text not null default 'pending',
   guest_count integer not null default 0,
+  is_approved boolean not null default false,
   phone text,
   note text,
   created_at timestamptz not null default now(),
@@ -25,3 +26,6 @@ create index if not exists wedding_responses_created_at_idx
 
 create index if not exists wedding_responses_attendance_status_idx
   on wedding_responses (attendance_status);
+
+create index if not exists wedding_responses_is_approved_idx
+  on wedding_responses (is_approved, created_at desc);

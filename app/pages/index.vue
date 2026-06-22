@@ -15,6 +15,12 @@ type CountdownItem = {
   value: string
 }
 
+type Wish = {
+  id: string
+  name: string
+  message: string
+}
+
 const weddingDate = new Date('2026-10-24T17:30:00+07:00')
 const now = ref(new Date())
 const backgroundMusic = ref<HTMLAudioElement | null>(null)
@@ -23,6 +29,9 @@ const isMusicPlaying = ref(false)
 const hasAudioError = ref(false)
 const isIntroOpen = ref(false)
 const isIntroAnimating = ref(false)
+const isSubmittingRsvp = ref(false)
+const rsvpStatusMessage = ref('')
+const rsvpStatusTone = ref<'success' | 'error'>('success')
 let countdownTimer: ReturnType<typeof window.setInterval> | undefined
 let stopCountdownFlipWatch: ReturnType<typeof watch> | undefined
 let stopGallerySlideWatch: ReturnType<typeof watch> | undefined
@@ -82,20 +91,9 @@ const activeGalleryIndex = ref(3)
 const activeGalleryImage = computed(() => galleryImages[activeGalleryIndex.value])
 const gallerySlideDirection = ref(1)
 
-const wishes = [
-  {
-    name: 'Minh Anh',
-    message: 'Chúc hai bạn luôn giữ được sự dịu dàng hôm nay trong mọi ngày về sau.'
-  },
-  {
-    name: 'Gia đình cô Hạnh',
-    message: 'Mong ngày vui thật trọn vẹn, hạnh phúc thật lâu bền.'
-  },
-  {
-    name: 'Nhóm bạn đại học',
-    message: 'Cuối cùng cũng tới ngày này. Chúc mừng cặp đôi đẹp nhất tối nay.'
-  }
-]
+const { data: wishes, refresh: refreshWishes } = await useFetch<Wish[]>('/api/wishes', {
+  default: () => []
+})
 
 const timeline = [
   {
@@ -161,11 +159,47 @@ function animateCountdownDigit(unitIndex: number, digitIndex: number) {
 }
 
 const submitLabel = computed(() => {
+  if (isSubmittingRsvp.value) {
+    return 'Đang gửi...'
+  }
+
   return form.attendanceStatus === 'attending' ? 'Gửi xác nhận tham dự' : 'Gửi lời chúc'
 })
 
-function submitRsvp() {
-  window.alert('Cảm ơn bạn. Phần giao diện đã sẵn sàng, bước sau mình sẽ nối API lưu vào database.')
+async function submitRsvp() {
+  if (isSubmittingRsvp.value) {
+    return
+  }
+
+  isSubmittingRsvp.value = true
+  rsvpStatusMessage.value = ''
+
+  try {
+    await $fetch('/api/rsvp', {
+      method: 'POST',
+      body: {
+        guestName: form.guestName,
+        wishMessage: form.wishMessage,
+        attendanceStatus: form.attendanceStatus,
+        guestCount: form.attendanceStatus === 'attending' ? form.guestCount : 0
+      }
+    })
+
+    form.guestName = ''
+    form.wishMessage = ''
+    form.attendanceStatus = 'attending'
+    form.guestCount = 2
+    rsvpStatusTone.value = 'success'
+    rsvpStatusMessage.value = 'Cảm ơn bạn. Lời chúc sẽ hiển thị sau khi được duyệt.'
+    await refreshWishes()
+  }
+  catch (error) {
+    rsvpStatusTone.value = 'error'
+    rsvpStatusMessage.value = error instanceof Error ? error.message : 'Không thể gửi xác nhận lúc này.'
+  }
+  finally {
+    isSubmittingRsvp.value = false
+  }
 }
 
 function showPreviousGalleryImage() {
@@ -671,7 +705,7 @@ onBeforeUnmount(() => {
 
     <section id="rsvp" class="rsvp section">
       <div class="rsvp-copy reveal">
-        <p class="eyebrow">RSVP</p>
+        <p class="eyebrow">Xác nhận tham dự</p>
         <h2>Gửi lời chúc và xác nhận tham dự</h2>
         <p>
           Bạn giúp chúng tôi chuẩn bị chu đáo hơn bằng cách xác nhận số lượng
@@ -711,7 +745,14 @@ onBeforeUnmount(() => {
           <input v-model.number="form.guestCount" type="number" min="1" max="20">
         </label>
 
-        <button type="submit">{{ submitLabel }}</button>
+        <button type="submit" :disabled="isSubmittingRsvp">{{ submitLabel }}</button>
+        <p
+          v-if="rsvpStatusMessage"
+          class="rsvp-form__status"
+          :class="`is-${rsvpStatusTone}`"
+        >
+          {{ rsvpStatusMessage }}
+        </p>
       </form>
     </section>
 
@@ -719,7 +760,7 @@ onBeforeUnmount(() => {
       <p class="script">Lời chúc</p>
       <h2>Thương gửi đến hai bạn</h2>
       <div class="wish-list">
-        <article v-for="wish in wishes" :key="wish.name">
+        <article v-for="wish in wishes" :key="wish.id">
           <p>{{ wish.message }}</p>
           <strong>{{ wish.name }}</strong>
         </article>
@@ -1392,6 +1433,26 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.rsvp-form__status {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.rsvp-form__status.is-success {
+  color: #52734d;
+}
+
+.rsvp-form__status.is-error {
+  color: #9f3f34;
+}
+
 .music-toggle {
   position: fixed;
   right: max(18px, env(safe-area-inset-right));
@@ -1480,18 +1541,25 @@ button {
 }
 
 .wish-list {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
   gap: 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
   margin-top: 32px;
+  padding: 2px 2px 14px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .wish-list article {
+  flex: 0 0 clamp(280px, calc((100% - 24px) / 3), 372px);
   display: grid;
   align-content: space-between;
   min-height: 210px;
   padding: 24px;
   background: #efe4dc;
+  scroll-snap-align: start;
   text-align: left;
 }
 
@@ -1607,9 +1675,12 @@ button {
   }
 
   .story,
-  .rsvp,
-  .wish-list {
+  .rsvp {
     grid-template-columns: 1fr;
+  }
+
+  .wish-list article {
+    flex-basis: min(84vw, 340px);
   }
 
   .gallery-frame {

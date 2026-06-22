@@ -6,6 +6,7 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgres://nuxt:nuxt@db:5432/nuxt_app
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me}
     depends_on:
       db:
         condition: service_healthy
