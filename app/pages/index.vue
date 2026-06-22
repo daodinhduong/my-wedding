@@ -76,16 +76,16 @@ const form = reactive<RsvpForm>({
 })
 
 const galleryImages = [
-  '/photos/IMG_0134.JPG',
-  '/photos/IMG_0136.JPG',
-  '/photos/IMG_0138.JPG',
-  '/photos/IMG_0139.JPG',
-  '/photos/IMG_0142.JPG',
-  '/photos/IMG_0148.JPG',
-  '/photos/IMG_0149.JPG',
-  '/photos/IMG_0150.JPG',
-  '/photos/IMG_0151.JPG',
-  '/photos/IMG_0152.JPG'
+  '/photos/IMG_0134.webp',
+  '/photos/IMG_0136.webp',
+  '/photos/IMG_0138.webp',
+  '/photos/IMG_0139.webp',
+  '/photos/IMG_0142.webp',
+  '/photos/IMG_0148.webp',
+  '/photos/IMG_0149.webp',
+  '/photos/IMG_0150.webp',
+  '/photos/IMG_0151.webp',
+  '/photos/IMG_0152.webp'
 ]
 const activeGalleryIndex = ref(3)
 const activeGalleryImage = computed(() => galleryImages[activeGalleryIndex.value])
@@ -539,7 +539,7 @@ onBeforeUnmount(() => {
     <section class="hero">
       <img
         class="hero-photo"
-        src="/photos/IMG_0139.JPG"
+        src="/photos/IMG_0139.webp"
         alt="Đình Dương và Thu Hà trong trang phục cưới"
       >
       <div class="hero-shade" />
@@ -612,7 +612,7 @@ onBeforeUnmount(() => {
     <section class="story section">
       <div class="story-media reveal">
         <img
-          src="/photos/IMG_0142.JPG"
+          src="/photos/IMG_0142.webp"
           alt="Đình Dương và Thu Hà cùng nhau trong ngày chụp cưới"
         >
       </div>
