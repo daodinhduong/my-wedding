@@ -28,11 +28,11 @@ useSeoMeta({
 useHead({
   link: [
     { rel: 'canonical', href: siteUrl },
-    { rel: 'icon', type: 'image/svg+xml', href: '/logo/dh-wedding-logo.svg' },
-    { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/logo/favicon-32.png' },
-    { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/logo/favicon-16.png' },
-    { rel: 'shortcut icon', href: '/logo/favicon.ico' },
-    { rel: 'apple-touch-icon', sizes: '512x512', href: '/logo/favicon-512.png' }
+    { rel: 'icon', type: 'image/svg+xml', href: '/logo/dh-wedding-logo.svg?v=2' },
+    { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/logo/favicon-32.png?v=2' },
+    { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/logo/favicon-16.png?v=2' },
+    { rel: 'shortcut icon', type: 'image/x-icon', href: '/favicon.ico?v=2' },
+    { rel: 'apple-touch-icon', sizes: '512x512', href: '/logo/favicon-512.png?v=2' }
   ]
 })
 
