@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">DH Wedding Monogram</title>
+  <desc id="desc">Monogram chu DH cho dam cuoi Duong va Ha</desc>
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8e7b0"/>
+      <stop offset="0.48" stop-color="#d9b467"/>
+      <stop offset="1" stop-color="#a9792e"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#gold)" stroke-width="27" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M126 104v304M126 104h72c94 0 151 55 151 151s-57 153-151 153h-72"/>
+    <path d="M243 126v260M243 256h143M386 126v260"/>
+  </g>
+  <path d="M101 104h51M101 408h51M218 126h50M218 386h50M361 126h50M361 386h50"
+        fill="none" stroke="url(#gold)" stroke-width="18" stroke-linecap="round"/>
+</svg>

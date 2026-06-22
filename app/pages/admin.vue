@@ -15,6 +15,7 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const responses = ref<AdminWeddingResponse[]>([])
 const updatingIds = ref(new Set<string>())
+const deletingIds = ref(new Set<string>())
 
 const approvedCount = computed(() => responses.value.filter((item) => item.isApproved).length)
 const pendingCount = computed(() => responses.value.filter((item) => !item.isApproved).length)
@@ -73,6 +74,32 @@ async function toggleApproval(response: AdminWeddingResponse) {
   }
   finally {
     updatingIds.value.delete(response.id)
+  }
+}
+
+async function deleteResponse(response: AdminWeddingResponse) {
+  const confirmed = window.confirm(`Xóa phản hồi của “${response.guestName}”? Thao tác này không thể hoàn tác.`)
+
+  if (!confirmed) {
+    return
+  }
+
+  deletingIds.value.add(response.id)
+  errorMessage.value = ''
+
+  try {
+    await $fetch(`/api/admin/responses/${response.id}`, {
+      method: 'DELETE',
+      headers: getAdminHeaders()
+    })
+
+    responses.value = responses.value.filter(item => item.id !== response.id)
+  }
+  catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Không thể xóa bản ghi.'
+  }
+  finally {
+    deletingIds.value.delete(response.id)
   }
 }
 
@@ -171,15 +198,25 @@ function formatCreatedAt(value: string) {
               <td>{{ response.guestCount }}</td>
               <td>{{ formatCreatedAt(response.createdAt) }}</td>
               <td>
-                <button
-                  class="approval-button"
-                  type="button"
-                  :class="{ 'is-approved': response.isApproved }"
-                  :disabled="updatingIds.has(response.id)"
-                  @click="toggleApproval(response)"
-                >
-                  {{ response.isApproved ? 'Ẩn' : 'Duyệt' }}
-                </button>
+                <div class="row-actions">
+                  <button
+                    class="approval-button"
+                    type="button"
+                    :class="{ 'is-approved': response.isApproved }"
+                    :disabled="updatingIds.has(response.id) || deletingIds.has(response.id)"
+                    @click="toggleApproval(response)"
+                  >
+                    {{ response.isApproved ? 'Ẩn' : 'Duyệt' }}
+                  </button>
+                  <button
+                    class="delete-button"
+                    type="button"
+                    :disabled="updatingIds.has(response.id) || deletingIds.has(response.id)"
+                    @click="deleteResponse(response)"
+                  >
+                    {{ deletingIds.has(response.id) ? 'Đang xóa...' : 'Xóa' }}
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -366,6 +403,19 @@ td small {
 
 .approval-button.is-approved {
   background: #9f3f34;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.delete-button {
+  min-width: 72px;
+  border: 1px solid #9f3f34;
+  background: transparent;
+  color: #9f3f34;
 }
 
 .empty-state {

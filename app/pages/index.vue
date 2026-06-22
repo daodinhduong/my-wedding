@@ -1,4 +1,41 @@
 <script setup lang="ts">
+const siteUrl = 'https://duonghawedding.io.vn/'
+const socialImageUrl = `${siteUrl}photos/og-wedding.webp`
+const pageTitle = 'Đình Dương & Thu Hà | Thiệp cưới'
+const pageDescription = 'Trân trọng kính mời bạn đến chung vui trong ngày thành hôn của Đình Dương và Thu Hà, ngày 24 - 25.10.2026.'
+
+useSeoMeta({
+  title: pageTitle,
+  description: pageDescription,
+  ogTitle: pageTitle,
+  ogDescription: pageDescription,
+  ogType: 'website',
+  ogUrl: siteUrl,
+  ogSiteName: 'Đình Dương & Thu Hà',
+  ogLocale: 'vi_VN',
+  ogImage: socialImageUrl,
+  ogImageAlt: 'Ảnh cưới của Đình Dương và Thu Hà',
+  ogImageType: 'image/webp',
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  twitterCard: 'summary_large_image',
+  twitterTitle: pageTitle,
+  twitterDescription: pageDescription,
+  twitterImage: socialImageUrl,
+  twitterImageAlt: 'Ảnh cưới của Đình Dương và Thu Hà'
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: siteUrl },
+    { rel: 'icon', type: 'image/svg+xml', href: '/logo/dh-wedding-logo.svg' },
+    { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/logo/favicon-32.png' },
+    { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/logo/favicon-16.png' },
+    { rel: 'shortcut icon', href: '/logo/favicon.ico' },
+    { rel: 'apple-touch-icon', sizes: '512x512', href: '/logo/favicon-512.png' }
+  ]
+})
+
 const musicSrc = '/audio/music.m4a'
 
 type AttendanceStatus = 'attending' | 'not_attending'

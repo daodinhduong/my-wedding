@@ -11,7 +11,7 @@ type HeaderEvent = {
 
 export function assertAdminPassword(event: HeaderEvent) {
   const config = useRuntimeConfig()
-  const expectedPassword = config.adminPassword
+  const expectedPassword = config.adminPassword || process.env.ADMIN_PASSWORD
   const rawPassword = event.node?.req?.headers?.['x-admin-password']
   const password = Array.isArray(rawPassword) ? rawPassword[0] : rawPassword
 
