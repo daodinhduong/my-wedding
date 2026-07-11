@@ -11,6 +11,7 @@ export async function ensureWeddingResponsesSchema() {
       attendance_status text not null default 'pending',
       guest_count integer not null default 0,
       is_approved boolean not null default false,
+      response_source text not null default 'website',
       phone text,
       note text,
       created_at timestamptz not null default now(),
@@ -24,11 +25,31 @@ export async function ensureWeddingResponsesSchema() {
         check (
           (attendance_status = 'attending' and guest_count between 1 and 20)
           or (attendance_status <> 'attending' and guest_count = 0)
+        ),
+      constraint wedding_responses_response_source_valid
+        check (
+          response_source in ('website', 'admin')
         )
     );
 
     alter table wedding_responses
       add column if not exists is_approved boolean not null default false;
+
+    alter table wedding_responses
+      add column if not exists response_source text not null default 'website';
+
+    do $$
+    begin
+      if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'wedding_responses_response_source_valid'
+      ) then
+        alter table wedding_responses
+          add constraint wedding_responses_response_source_valid
+          check (response_source in ('website', 'admin'));
+      end if;
+    end $$;
 
     create index if not exists wedding_responses_created_at_idx
       on wedding_responses (created_at desc);
@@ -38,6 +59,9 @@ export async function ensureWeddingResponsesSchema() {
 
     create index if not exists wedding_responses_is_approved_idx
       on wedding_responses (is_approved, created_at desc);
+
+    create index if not exists wedding_responses_response_source_idx
+      on wedding_responses (response_source);
   `).then(() => undefined)
 
   return schemaReady

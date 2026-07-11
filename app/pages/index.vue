@@ -1,8 +1,11 @@
 <script setup lang="ts">
 const siteUrl = 'https://duonghawedding.io.vn/'
-const socialImageUrl = `${siteUrl}photos/og-wedding.webp`
-const pageTitle = 'Đình Dương & Thu Hà | Thiệp cưới'
-const pageDescription = 'Trân trọng kính mời bạn đến chung vui trong ngày thành hôn của Đình Dương và Thu Hà, ngày 24 - 25.10.2026.'
+const socialImageUrl = `${siteUrl}photos/og-wedding.png`
+const pageTitle = 'Thiệp cưới Đình Dương & Thu Hà'
+const weddingDate = new Date('2026-11-29T10:00:00+07:00')
+const weddingDateText = '29.11.2026'
+const weddingDateTimeText = '10:00, Chủ nhật, 29.11.2026'
+const pageDescription = `Trân trọng kính mời bạn đến chung vui trong ngày thành hôn của Đình Dương và Thu Hà, ngày ${weddingDateTimeText}.`
 
 useSeoMeta({
   title: pageTitle,
@@ -15,7 +18,7 @@ useSeoMeta({
   ogLocale: 'vi_VN',
   ogImage: socialImageUrl,
   ogImageAlt: 'Ảnh cưới của Đình Dương và Thu Hà',
-  ogImageType: 'image/webp',
+  ogImageType: 'image/png',
   ogImageWidth: 1200,
   ogImageHeight: 630,
   twitterCard: 'summary_large_image',
@@ -58,12 +61,12 @@ type Wish = {
   message: string
 }
 
-const weddingDate = new Date('2026-10-24T17:30:00+07:00')
 const now = ref(new Date())
 const backgroundMusic = ref<HTMLAudioElement | null>(null)
 const invitationIntro = ref<HTMLElement | null>(null)
 const isMusicPlaying = ref(false)
 const hasAudioError = ref(false)
+const hasPrimedBackgroundMusic = ref(false)
 const isIntroOpen = ref(false)
 const isIntroAnimating = ref(false)
 const isSubmittingRsvp = ref(false)
@@ -134,18 +137,18 @@ const { data: wishes, refresh: refreshWishes } = await useFetch<Wish[]>('/api/wi
 
 const timeline = [
   {
-    time: '16:30',
+    time: '10:00',
     title: 'Đón khách',
     text: 'Cùng lưu lại những khung hình đầu tiên tại khu vực welcome.'
   },
   {
-    time: '17:30',
+    time: '11:00',
     title: 'Lễ thành hôn',
     text: 'Khoảnh khắc trao nhẫn và lời hẹn ước trước gia đình, bạn bè.'
   },
   {
-    time: '18:30',
-    title: 'Tiệc tối',
+    time: '11:30',
+    title: 'Tiệc cưới trưa',
     text: 'Dùng bữa, nâng ly và chia sẻ niềm vui trong không gian ấm cúng.'
   }
 ]
@@ -259,17 +262,45 @@ function showGalleryImage(index: number) {
 }
 
 async function playBackgroundMusic() {
-  if (!backgroundMusic.value || hasAudioError.value) {
+  const audio = backgroundMusic.value
+
+  if (!audio || hasAudioError.value) {
     return
   }
 
   try {
-    backgroundMusic.value.volume = 0.36
-    await backgroundMusic.value.play()
+    audio.volume = 0.36
+    audio.muted = false
+
+    if (!audio.paused) {
+      isMusicPlaying.value = true
+      return
+    }
+
+    await audio.play()
     isMusicPlaying.value = true
   }
   catch {
     isMusicPlaying.value = false
+  }
+}
+
+async function primeBackgroundMusic() {
+  const audio = backgroundMusic.value
+
+  if (!audio || hasAudioError.value || hasPrimedBackgroundMusic.value) {
+    return
+  }
+
+  try {
+    audio.volume = 0.36
+    audio.muted = true
+    await audio.play()
+    hasPrimedBackgroundMusic.value = true
+    isMusicPlaying.value = false
+  }
+  catch {
+    hasPrimedBackgroundMusic.value = false
   }
 }
 
@@ -289,6 +320,14 @@ async function toggleBackgroundMusic() {
 
 function handleAudioError() {
   hasAudioError.value = true
+  isMusicPlaying.value = false
+}
+
+function handleAudioPlay() {
+  isMusicPlaying.value = !(backgroundMusic.value?.muted ?? false)
+}
+
+function handleAudioPause() {
   isMusicPlaying.value = false
 }
 
@@ -381,6 +420,7 @@ onMounted(() => {
   window.addEventListener('resize', updateViewportHeight)
   window.addEventListener('orientationchange', updateViewportHeight)
   window.visualViewport?.addEventListener('resize', updateViewportHeight)
+  void primeBackgroundMusic()
 
   countdownTimer = window.setInterval(() => {
     now.value = new Date()
@@ -524,8 +564,8 @@ onBeforeUnmount(() => {
       playsinline
       preload="auto"
       @error="handleAudioError"
-      @play="isMusicPlaying = true"
-      @pause="isMusicPlaying = false"
+      @play="handleAudioPlay"
+      @pause="handleAudioPause"
     />
 
     <button
@@ -564,7 +604,7 @@ onBeforeUnmount(() => {
           <span class="invitation-card__ornament" aria-hidden="true" />
           <span class="invitation-card__script">Wedding invitation</span>
           <span class="invitation-card__names">Đình Dương<br>Thu Hà</span>
-          <span class="invitation-card__date">24 - 25.10.2026</span>
+          <span class="invitation-card__date">{{ weddingDateText }}</span>
           <span class="invitation-card__hint">Chạm để mở thiệp</span>
         </span>
         <span class="invitation-card__door invitation-card__left" aria-hidden="true" />
@@ -597,7 +637,7 @@ onBeforeUnmount(() => {
             <span class="invitation-card__ornament" aria-hidden="true" />
             <span class="invitation-card__script">Wedding invitation</span>
             <span class="invitation-card__names">Đình Dương<br>Thu Hà</span>
-            <span class="invitation-card__date">24 - 25.10.2026</span>
+            <span class="invitation-card__date">{{ weddingDateText }}</span>
             <span class="invitation-card__hint">Chạm để mở thiệp</span>
           </span>
           <span class="invitation-card__door invitation-card__left" aria-hidden="true" />
@@ -611,7 +651,7 @@ onBeforeUnmount(() => {
           <span class="hero-script">Wedding</span>
           <span class="hero-names">Đình Dương<br>Thu Hà</span>
         </h1>
-        <p class="hero-date">Thứ bảy &amp; Chủ nhật, 24 - 25.10.2026</p>
+        <p class="hero-date">{{ weddingDateTimeText }}</p>
         <a class="hero-action" href="#rsvp">Xác nhận tham dự</a>
       </div>
     </section>
@@ -735,9 +775,9 @@ onBeforeUnmount(() => {
 
     <section class="venue section reveal">
       <p class="script">Địa điểm</p>
-      <h2 style="line-height: 1.2;">White Palace Phạm Văn Đồng</h2>
-      <p>108 Phạm Văn Đồng, Thành phố Hồ Chí Minh</p>
-      <a href="https://maps.google.com" target="_blank" rel="noreferrer">Xem bản đồ</a>
+      <h2 style="line-height: 1.2;">Phan Anh Palace</h2>
+      <p>Số 1 Nguyễn Hữu Cầu, phường Hải Dương, TP.Hải Phòng</p>
+      <a href="https://maps.app.goo.gl/hwKzwyvfCyopvHvS6" target="_blank" rel="noreferrer">Xem bản đồ</a>
     </section>
 
     <section id="rsvp" class="rsvp section">
@@ -753,7 +793,7 @@ onBeforeUnmount(() => {
       <form class="rsvp-form reveal" @submit.prevent="submitRsvp">
         <label>
           Tên của bạn
-          <input v-model="form.guestName" type="text" required placeholder="Ví dụ: Nguyễn Minh Anh">
+          <input v-model="form.guestName" type="text" required placeholder="">
         </label>
 
         <label>

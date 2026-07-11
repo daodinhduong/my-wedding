@@ -10,6 +10,7 @@ type AdminWeddingResponse = {
   attendanceStatus: 'attending' | 'not_attending' | 'pending'
   guestCount: number
   isApproved: boolean
+  responseSource: 'website' | 'admin'
   createdAt: string
 }
 
@@ -25,6 +26,7 @@ export default defineEventHandler(async (event) => {
       attendance_status as "attendanceStatus",
       guest_count as "guestCount",
       is_approved as "isApproved",
+      response_source as "responseSource",
       created_at::text as "createdAt"
     from wedding_responses
     order by created_at desc

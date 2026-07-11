@@ -6,16 +6,41 @@ type AdminWeddingResponse = {
   attendanceStatus: 'attending' | 'not_attending' | 'pending'
   guestCount: number
   isApproved: boolean
+  responseSource: 'website' | 'admin'
   createdAt: string
+}
+
+type CreateResponseForm = {
+  guestName: string
+  wishMessage: string
+  attendanceStatus: 'attending' | 'not_attending'
+  guestCount: number
 }
 
 const password = ref('')
 const isUnlocked = ref(false)
 const isLoading = ref(false)
+const isCreateDialogOpen = ref(false)
+const isEditDialogOpen = ref(false)
+const isCreatingResponse = ref(false)
+const isEditingResponse = ref(false)
 const errorMessage = ref('')
+const createStatusMessage = ref('')
+const editStatusMessage = ref('')
 const responses = ref<AdminWeddingResponse[]>([])
 const updatingIds = ref(new Set<string>())
 const deletingIds = ref(new Set<string>())
+const editingResponse = ref<AdminWeddingResponse | null>(null)
+const createForm = reactive<CreateResponseForm>({
+  guestName: '',
+  wishMessage: '',
+  attendanceStatus: 'attending',
+  guestCount: 1
+})
+const editForm = reactive({
+  attendanceStatus: 'attending' as 'attending' | 'not_attending',
+  guestCount: 1
+})
 
 const approvedCount = computed(() => responses.value.filter((item) => item.isApproved).length)
 const pendingCount = computed(() => responses.value.filter((item) => !item.isApproved).length)
@@ -103,6 +128,128 @@ async function deleteResponse(response: AdminWeddingResponse) {
   }
 }
 
+function openCreateDialog() {
+  errorMessage.value = ''
+  createStatusMessage.value = ''
+  isCreateDialogOpen.value = true
+}
+
+function closeCreateDialog() {
+  if (isCreatingResponse.value) {
+    return
+  }
+
+  isCreateDialogOpen.value = false
+  createStatusMessage.value = ''
+}
+
+function resetCreateForm() {
+  createForm.guestName = ''
+  createForm.wishMessage = ''
+  createForm.attendanceStatus = 'attending'
+  createForm.guestCount = 1
+}
+
+function openEditDialog(response: AdminWeddingResponse) {
+  if (response.attendanceStatus === 'pending') {
+    editForm.attendanceStatus = 'attending'
+    editForm.guestCount = 1
+  }
+  else {
+    editForm.attendanceStatus = response.attendanceStatus
+    editForm.guestCount = response.attendanceStatus === 'attending' ? response.guestCount : 1
+  }
+
+  editingResponse.value = response
+  editStatusMessage.value = ''
+  errorMessage.value = ''
+  isEditDialogOpen.value = true
+}
+
+function closeEditDialog() {
+  if (isEditingResponse.value) {
+    return
+  }
+
+  isEditDialogOpen.value = false
+  editStatusMessage.value = ''
+  editingResponse.value = null
+}
+
+async function createResponse() {
+  if (isCreatingResponse.value) {
+    return
+  }
+
+  isCreatingResponse.value = true
+  errorMessage.value = ''
+  createStatusMessage.value = ''
+
+  try {
+    const created = await $fetch<AdminWeddingResponse>('/api/admin/responses', {
+      method: 'POST',
+      headers: getAdminHeaders(),
+      body: {
+        guestName: createForm.guestName,
+        wishMessage: createForm.wishMessage,
+        attendanceStatus: createForm.attendanceStatus,
+        guestCount: createForm.attendanceStatus === 'attending' ? createForm.guestCount : 0
+      }
+    })
+
+    responses.value = [created, ...responses.value]
+    resetCreateForm()
+    isCreateDialogOpen.value = false
+  }
+  catch (error) {
+    createStatusMessage.value = error instanceof Error ? error.message : 'Không thể thêm khách mời.'
+  }
+  finally {
+    isCreatingResponse.value = false
+  }
+}
+
+async function updateResponseAttendance() {
+  const response = editingResponse.value
+
+  if (!response || isEditingResponse.value) {
+    return
+  }
+
+  isEditingResponse.value = true
+  editStatusMessage.value = ''
+  errorMessage.value = ''
+
+  try {
+    const updated = await $fetch<{
+      id: string
+      isApproved: boolean
+      attendanceStatus: AdminWeddingResponse['attendanceStatus']
+      guestCount: number
+    }>(`/api/admin/responses/${response.id}`, {
+      method: 'PATCH',
+      headers: getAdminHeaders(),
+      body: {
+        attendanceStatus: editForm.attendanceStatus,
+        guestCount: editForm.attendanceStatus === 'attending' ? editForm.guestCount : 0
+      }
+    })
+
+    response.attendanceStatus = updated.attendanceStatus
+    response.guestCount = updated.guestCount
+    response.isApproved = updated.isApproved
+    isEditDialogOpen.value = false
+    editStatusMessage.value = ''
+    editingResponse.value = null
+  }
+  catch (error) {
+    editStatusMessage.value = error instanceof Error ? error.message : 'Không thể cập nhật khách mời.'
+  }
+  finally {
+    isEditingResponse.value = false
+  }
+}
+
 function formatAttendance(status: AdminWeddingResponse['attendanceStatus']) {
   if (status === 'attending') {
     return 'Tham dự'
@@ -113,6 +260,10 @@ function formatAttendance(status: AdminWeddingResponse['attendanceStatus']) {
   }
 
   return 'Chưa rõ'
+}
+
+function formatResponseSource(source: AdminWeddingResponse['responseSource']) {
+  return source === 'admin' ? 'Admin thêm' : 'Khách nhập'
 }
 
 function formatCreatedAt(value: string) {
@@ -162,8 +313,8 @@ function formatCreatedAt(value: string) {
           <span>{{ pendingCount }} chờ duyệt</span>
           <span>{{ approvedCount }} đã duyệt</span>
           <span>{{ approvedGuestCount }} khách mời</span>
-          <button type="button" :disabled="isLoading" @click="loadResponses">
-            Làm mới
+          <button type="button" @click="openCreateDialog">
+            Thêm mới
           </button>
         </div>
       </header>
@@ -178,13 +329,14 @@ function formatCreatedAt(value: string) {
               <th>Lời chúc</th>
               <th>Tham dự</th>
               <th>Số người</th>
+              <th>Nguồn</th>
               <th>Ngày gửi</th>
               <th>Hiển thị</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="!responses.length">
-              <td colspan="6" class="empty-state">Chưa có phản hồi nào.</td>
+              <td colspan="7" class="empty-state">Chưa có phản hồi nào.</td>
             </tr>
             <tr v-for="response in responses" :key="response.id">
               <td>
@@ -196,9 +348,22 @@ function formatCreatedAt(value: string) {
               </td>
               <td>{{ formatAttendance(response.attendanceStatus) }}</td>
               <td>{{ response.guestCount }}</td>
+              <td>
+                <span class="source-badge" :class="`is-${response.responseSource}`">
+                  {{ formatResponseSource(response.responseSource) }}
+                </span>
+              </td>
               <td>{{ formatCreatedAt(response.createdAt) }}</td>
               <td>
                 <div class="row-actions">
+                  <button
+                    class="edit-button"
+                    type="button"
+                    :disabled="updatingIds.has(response.id) || deletingIds.has(response.id)"
+                    @click="openEditDialog(response)"
+                  >
+                    Sửa
+                  </button>
                   <button
                     class="approval-button"
                     type="button"
@@ -221,6 +386,150 @@ function formatCreatedAt(value: string) {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div
+        v-if="isCreateDialogOpen"
+        class="modal-backdrop"
+        role="presentation"
+        @click.self="closeCreateDialog"
+      >
+        <section
+          class="create-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-response-title"
+        >
+          <header class="create-dialog__header">
+            <div>
+              <p class="eyebrow">Khách mời</p>
+              <h2 id="create-response-title">Thêm người tham dự</h2>
+            </div>
+            <button
+              class="icon-button"
+              type="button"
+              :disabled="isCreatingResponse"
+              aria-label="Đóng"
+              @click="closeCreateDialog"
+            >
+              ×
+            </button>
+          </header>
+
+          <form class="create-form" @submit.prevent="createResponse">
+            <label>
+              Tên khách mời
+              <input
+                v-model="createForm.guestName"
+                type="text"
+                required
+                autocomplete="off"
+                placeholder="Nhập tên khách mời"
+              >
+            </label>
+
+            <label>
+              Trạng thái tham dự
+              <select v-model="createForm.attendanceStatus">
+                <option value="attending">Tham dự</option>
+                <option value="not_attending">Không tham dự</option>
+              </select>
+            </label>
+
+            <label v-if="createForm.attendanceStatus === 'attending'">
+              Số người
+              <input
+                v-model.number="createForm.guestCount"
+                type="number"
+                min="1"
+                max="20"
+                required
+              >
+            </label>
+
+            <label>
+              Lời chúc
+              <textarea
+                v-model="createForm.wishMessage"
+                rows="4"
+                placeholder="Có thể để trống"
+              />
+            </label>
+
+            <p v-if="createStatusMessage" class="status is-error">{{ createStatusMessage }}</p>
+
+            <div class="create-form__actions">
+              <button type="button" :disabled="isCreatingResponse" @click="closeCreateDialog">
+                Hủy
+              </button>
+              <button type="submit" :disabled="isCreatingResponse">
+                {{ isCreatingResponse ? 'Đang thêm...' : 'Thêm khách mời' }}
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <div
+        v-if="isEditDialogOpen"
+        class="modal-backdrop"
+        role="presentation"
+        @click.self="closeEditDialog"
+      >
+        <section
+          class="create-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-response-title"
+        >
+          <header class="create-dialog__header">
+            <div>
+              <p class="eyebrow">Chỉnh sửa</p>
+              <h2 id="edit-response-title">{{ editingResponse?.guestName }}</h2>
+            </div>
+            <button
+              class="icon-button"
+              type="button"
+              :disabled="isEditingResponse"
+              aria-label="Đóng"
+              @click="closeEditDialog"
+            >
+              ×
+            </button>
+          </header>
+
+          <form class="create-form" @submit.prevent="updateResponseAttendance">
+            <label>
+              Trạng thái tham dự
+              <select v-model="editForm.attendanceStatus">
+                <option value="attending">Tham dự</option>
+                <option value="not_attending">Không tham dự</option>
+              </select>
+            </label>
+
+            <label v-if="editForm.attendanceStatus === 'attending'">
+              Số người
+              <input
+                v-model.number="editForm.guestCount"
+                type="number"
+                min="1"
+                max="20"
+                required
+              >
+            </label>
+
+            <p v-if="editStatusMessage" class="status is-error">{{ editStatusMessage }}</p>
+
+            <div class="create-form__actions">
+              <button type="button" :disabled="isEditingResponse" @click="closeEditDialog">
+                Hủy
+              </button>
+              <button type="submit" :disabled="isEditingResponse">
+                {{ isEditingResponse ? 'Đang lưu...' : 'Lưu thay đổi' }}
+              </button>
+            </div>
+          </form>
+        </section>
       </div>
     </section>
   </main>
@@ -272,6 +581,12 @@ h1 {
   line-height: 1.12;
 }
 
+h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  line-height: 1.2;
+}
+
 .login-form {
   display: grid;
   gap: 16px;
@@ -286,7 +601,9 @@ label {
   font-weight: 800;
 }
 
-input {
+input,
+select,
+textarea {
   min-height: 48px;
   border: 1px solid #d8c8bc;
   background: #fffaf4;
@@ -294,6 +611,12 @@ input {
   color: inherit;
   font: inherit;
   font-weight: 500;
+}
+
+textarea {
+  min-height: 112px;
+  padding: 12px 14px;
+  resize: vertical;
 }
 
 button {
@@ -361,7 +684,7 @@ button:disabled {
 
 table {
   width: 100%;
-  min-width: 920px;
+  min-width: 1060px;
   border-collapse: collapse;
 }
 
@@ -396,6 +719,38 @@ td small {
   line-height: 1.65;
 }
 
+.source-badge {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d8c8bc;
+  padding: 0 10px;
+  background: #fffaf4;
+  color: #5a514c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.source-badge.is-admin {
+  border-color: #b88c5a;
+  background: #fff4df;
+  color: #755327;
+}
+
+.source-badge.is-website {
+  border-color: #b7c9b1;
+  background: #f3fbf0;
+  color: #52734d;
+}
+
+.edit-button {
+  min-width: 64px;
+  border: 1px solid #6f3d34;
+  background: #fffaf4;
+  color: #6f3d34;
+}
+
 .approval-button {
   min-width: 86px;
   background: #52734d;
@@ -424,6 +779,62 @@ td small {
   text-align: center;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  overflow-y: auto;
+  padding: 24px;
+  background: rgba(45, 41, 38, 0.48);
+}
+
+.create-dialog {
+  width: min(100%, 520px);
+  border: 1px solid #e2d4c9;
+  background: #fffdf9;
+  box-shadow: 0 24px 80px rgba(45, 41, 38, 0.24);
+}
+
+.create-dialog__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 0;
+}
+
+.icon-button {
+  width: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 1px solid #e2d4c9;
+  background: #fffaf4;
+  color: #6f3d34;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.create-form {
+  display: grid;
+  gap: 16px;
+  padding: 22px 24px 24px;
+}
+
+.create-form__actions {
+  display: flex;
+  justify-content: end;
+  gap: 10px;
+}
+
+.create-form__actions button[type="button"] {
+  border: 1px solid #d8c8bc;
+  background: transparent;
+  color: #6f3d34;
+}
+
 @media (max-width: 760px) {
   .admin-header {
     display: grid;
@@ -432,6 +843,14 @@ td small {
 
   .admin-actions {
     justify-content: start;
+  }
+
+  .modal-backdrop {
+    padding: 12px;
+  }
+
+  .create-form__actions {
+    display: grid;
   }
 }
 </style>
