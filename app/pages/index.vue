@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const siteUrl = 'https://duonghawedding.io.vn/'
-const socialImageUrl = `${siteUrl}photos/og-wedding.png`
+const socialImageUrl = `${siteUrl}photos/og-wedding.png?v=3`
 const pageTitle = 'Thiệp cưới Đình Dương & Thu Hà'
 const weddingDate = new Date('2026-11-29T10:00:00+07:00')
 const weddingDateText = '29.11.2026'
