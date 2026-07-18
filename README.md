@@ -35,4 +35,26 @@ Sau đó dùng `DATABASE_URL` trong `.env`:
 
 ```bash
 DATABASE_URL=postgres://nuxt:nuxt@localhost:5432/nuxt_app
+
+## Prisma
+
+Database schema nằm trong `prisma/schema.prisma` và lịch sử migration nằm
+trong `prisma/migrations`.
+
+```bash
+# Tạo Prisma Client sau khi sửa schema
+npm run db:generate
+
+# Tạo và áp dụng migration trong môi trường phát triển
+npm run db:migrate -- --name ten_migration
+
+# Áp dụng các migration đã có
+npm run db:deploy
+
+# Mở giao diện xem dữ liệu
+npm run db:studio
+```
+
+Khi chạy bằng Docker Compose, ứng dụng tự chạy `prisma migrate deploy`
+trước khi Nuxt server khởi động. Migration không xóa dữ liệu hiện có.
 ```

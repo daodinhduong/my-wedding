@@ -9,19 +9,28 @@
     "build": "nuxt build",
     "dev": "nuxt dev --host 0.0.0.0",
     "generate": "nuxt generate",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
     "preview": "nuxt preview --host 0.0.0.0",
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
     "@nuxt/eslint": "^1.9.0",
+    "@prisma/adapter-pg": "^6.19.3",
+    "@prisma/client": "^6.19.3",
     "gsap": "^3.13.0",
     "nuxt": "4.0.0",
-    "pg": "^8.13.1",
+    "pg": "^8.22.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
-    "@types/pg": "^8.11.10",
+    "@types/pg": "^8.20.0",
+    "dotenv": "^17.4.2",
+    "prisma": "^6.19.3",
     "typescript": "^5.7.2"
   }
 }

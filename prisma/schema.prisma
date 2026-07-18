@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model WeddingResponse {
+  id               BigInt   @id @default(autoincrement())
+  guestName        String   @map("guest_name")
+  wishMessage      String?  @map("wish_message")
+  attendanceStatus String   @default("pending") @map("attendance_status")
+  guestCount       Int      @default(0) @map("guest_count")
+  isApproved       Boolean  @default(false) @map("is_approved")
+  responseSource   String   @default("website") @map("response_source")
+  phone            String?
+  note             String?
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([createdAt(sort: Desc)], map: "wedding_responses_created_at_idx")
+  @@index([attendanceStatus], map: "wedding_responses_attendance_status_idx")
+  @@index([isApproved, createdAt(sort: Desc)], map: "wedding_responses_is_approved_idx")
+  @@index([responseSource], map: "wedding_responses_response_source_idx")
+  @@map("wedding_responses")
+}

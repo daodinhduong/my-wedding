@@ -1,14 +1,13 @@
 import { defineEventHandler } from 'h3'
-import { useDb } from '../utils/db'
+import { prisma } from '../utils/db'
 
 export default defineEventHandler(async () => {
   try {
-    const db = useDb()
-    const result = await db.query<{ now: Date }>('select now() as now')
+    await prisma.$queryRaw`SELECT 1`
 
     return {
       ok: true,
-      message: `PostgreSQL phản hồi lúc ${result.rows[0]?.now ?? 'không rõ thời gian'}.`
+      message: `PostgreSQL phản hồi lúc ${new Date().toISOString()}.`
     }
   } catch (error) {
     return {

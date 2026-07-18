@@ -1,37 +1,28 @@
 import { defineEventHandler } from 'h3'
 import { assertAdminPassword } from '../../utils/adminAuth'
-import { useDb } from '../../utils/db'
-import { ensureWeddingResponsesSchema } from '../../utils/weddingResponses'
-
-type AdminWeddingResponse = {
-  id: string
-  guestName: string
-  wishMessage: string | null
-  attendanceStatus: 'attending' | 'not_attending' | 'pending'
-  guestCount: number
-  isApproved: boolean
-  responseSource: 'website' | 'admin'
-  createdAt: string
-}
+import { prisma } from '../../utils/db'
 
 export default defineEventHandler(async (event) => {
   assertAdminPassword(event)
-  await ensureWeddingResponsesSchema()
 
-  const result = await useDb().query<AdminWeddingResponse>(`
-    select
-      id::text as "id",
-      guest_name as "guestName",
-      wish_message as "wishMessage",
-      attendance_status as "attendanceStatus",
-      guest_count as "guestCount",
-      is_approved as "isApproved",
-      response_source as "responseSource",
-      created_at::text as "createdAt"
-    from wedding_responses
-    order by created_at desc
-    limit 200
-  `)
+  const responses = await prisma.weddingResponse.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 200,
+    select: {
+      id: true,
+      guestName: true,
+      wishMessage: true,
+      attendanceStatus: true,
+      guestCount: true,
+      isApproved: true,
+      responseSource: true,
+      createdAt: true
+    }
+  })
 
-  return result.rows
+  return responses.map(response => ({
+    ...response,
+    id: response.id.toString(),
+    createdAt: response.createdAt.toISOString()
+  }))
 })

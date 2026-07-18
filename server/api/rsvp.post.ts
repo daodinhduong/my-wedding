@@ -1,7 +1,6 @@
 import { createError, defineEventHandler } from 'h3'
-import { useDb } from '../utils/db'
+import { prisma } from '../utils/db'
 import { readJsonBody } from '../utils/readJsonBody'
-import { ensureWeddingResponsesSchema } from '../utils/weddingResponses'
 
 type AttendanceStatus = 'attending' | 'not_attending'
 
@@ -25,17 +24,11 @@ export default defineEventHandler(async (event) => {
   const guestCount = attendanceStatus === 'attending' ? rawGuestCount : 0
 
   if (!guestName) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Vui long nhap ten cua ban.'
-    })
+    throw createError({ statusCode: 400, statusMessage: 'Vui long nhap ten cua ban.' })
   }
 
   if (!attendanceStatus) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Trang thai tham du khong hop le.'
-    })
+    throw createError({ statusCode: 400, statusMessage: 'Trang thai tham du khong hop le.' })
   }
 
   if (attendanceStatus === 'attending' && (!Number.isInteger(guestCount) || guestCount < 1 || guestCount > 20)) {
@@ -45,27 +38,21 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await ensureWeddingResponsesSchema()
-
-  const result = await useDb().query<{ id: string }>(
-    `
-      insert into wedding_responses (
-        guest_name,
-        wish_message,
-        attendance_status,
-        guest_count,
-        is_approved,
-        response_source
-      )
-      values ($1, $2, $3, $4, false, 'website')
-      returning id
-    `,
-    [guestName, wishMessage || null, attendanceStatus, guestCount]
-  )
+  const response = await prisma.weddingResponse.create({
+    data: {
+      guestName,
+      wishMessage: wishMessage || null,
+      attendanceStatus,
+      guestCount,
+      isApproved: false,
+      responseSource: 'website'
+    },
+    select: { id: true }
+  })
 
   return {
     ok: true,
-    id: result.rows[0]?.id,
+    id: response.id.toString(),
     isApproved: false,
     message: 'Cam on ban. Loi chuc se hien thi sau khi duoc duyet.'
   }
