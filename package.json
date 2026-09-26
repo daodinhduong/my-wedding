@@ -18,10 +18,12 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1141.0",
     "@nuxt/eslint": "^1.9.0",
     "@prisma/adapter-pg": "^6.19.3",
     "@prisma/client": "^6.19.3",
     "gsap": "^3.13.0",
+    "lucide-vue-next": "^1.0.0",
     "nuxt": "4.0.0",
     "pg": "^8.22.0",
     "vue": "^3.5.13",

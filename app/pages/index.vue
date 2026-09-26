@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { CalendarDays, Clock3, Hourglass, Heart } from 'lucide-vue-next'
+
+const countdownIcons = [CalendarDays, Clock3, Hourglass, Heart]
 const siteUrl = 'https://duonghawedding.io.vn/'
 const socialImageUrl = `${siteUrl}photos/og-wedding.png?v=3`
 const pageTitle = 'Thiệp cưới Đình Dương & Thu Hà'
@@ -115,21 +118,52 @@ const form = reactive<RsvpForm>({
   guestCount: 2
 })
 
-const galleryImages = [
-  '/photos/IMG_0134.webp',
-  '/photos/IMG_0136.webp',
-  '/photos/IMG_0138.webp',
-  '/photos/IMG_0139.webp',
-  '/photos/IMG_0142.webp',
-  '/photos/IMG_0148.webp',
-  '/photos/IMG_0149.webp',
-  '/photos/IMG_0150.webp',
-  '/photos/IMG_0151.webp',
-  '/photos/IMG_0152.webp'
-]
-const activeGalleryIndex = ref(3)
-const activeGalleryImage = computed(() => galleryImages[activeGalleryIndex.value])
+const { data: galleryImages, status: galleryStatus, error: galleryError, refresh: refreshGallery } = await useFetch<string[]>('/api/gallery', {
+  lazy: true,
+  default: () => []
+})
+const activeGalleryIndex = ref(0)
+const activeGalleryImage = computed(() => galleryImages.value[activeGalleryIndex.value])
 const gallerySlideDirection = ref(1)
+const galleryAspectRatio = ref(2 / 3)
+let galleryTouch: { x: number, y: number, vertical: boolean } | undefined
+
+function startGallerySwipe(event: TouchEvent) {
+  galleryTouch = undefined
+  if (event.touches.length !== 1 || (event.target as HTMLElement).closest('button')) return
+  const touch = event.touches[0]!
+  galleryTouch = { x: touch.clientX, y: touch.clientY, vertical: false }
+}
+
+function moveGallerySwipe(event: TouchEvent) {
+  if (event.touches.length !== 1) {
+    galleryTouch = undefined
+    return
+  }
+  if (!galleryTouch) return
+  const touch = event.touches[0]!
+  const dx = Math.abs(touch.clientX - galleryTouch.x)
+  const dy = Math.abs(touch.clientY - galleryTouch.y)
+  if (dy > 12 && dy > dx) galleryTouch.vertical = true
+}
+
+function endGallerySwipe(event: TouchEvent) {
+  const start = galleryTouch
+  galleryTouch = undefined
+  if (!start || start.vertical || event.touches.length || !event.changedTouches.length) return
+  const touch = event.changedTouches[0]!
+  const dx = touch.clientX - start.x
+  const dy = touch.clientY - start.y
+  if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.5) return
+  if (dx < 0) showNextGalleryImage()
+  else showPreviousGalleryImage()
+}
+
+function updateGalleryAspectRatio(event: Event) {
+  const image = event.target as HTMLImageElement
+  if (image.getAttribute('src') !== activeGalleryImage.value || !image.naturalHeight) return
+  galleryAspectRatio.value = image.naturalWidth / image.naturalHeight
+}
 
 const { data: wishes, refresh: refreshWishes } = await useFetch<Wish[]>('/api/wishes', {
   default: () => []
@@ -244,12 +278,14 @@ async function submitRsvp() {
 
 function showPreviousGalleryImage() {
   gallerySlideDirection.value = -1
-  activeGalleryIndex.value = (activeGalleryIndex.value - 1 + galleryImages.length) % galleryImages.length
+  if (!galleryImages.value.length) return
+  activeGalleryIndex.value = (activeGalleryIndex.value - 1 + galleryImages.value.length) % galleryImages.value.length
 }
 
 function showNextGalleryImage() {
   gallerySlideDirection.value = 1
-  activeGalleryIndex.value = (activeGalleryIndex.value + 1) % galleryImages.length
+  if (!galleryImages.value.length) return
+  activeGalleryIndex.value = (activeGalleryIndex.value + 1) % galleryImages.value.length
 }
 
 function showGalleryImage(index: number) {
@@ -503,26 +539,27 @@ onMounted(() => {
 
     const direction = gallerySlideDirection.value
     const frame = document.querySelector<HTMLElement>('.gallery-frame')
-    const background = frame?.querySelector<HTMLElement>('.gallery-frame__background')
     const photo = frame?.querySelector<HTMLElement>('.gallery-frame__photo')
     const activeThumb = document.querySelector<HTMLElement>('.gallery-thumb.is-active')
 
-    if (!frame || !background || !photo) {
+    const thumbStrip = activeThumb?.closest<HTMLElement>('.gallery-thumbs')
+    if (activeThumb && thumbStrip) {
+      const stripBounds = thumbStrip.getBoundingClientRect()
+      const thumbBounds = activeThumb.getBoundingClientRect()
+      const centeredLeft = thumbStrip.scrollLeft + thumbBounds.left - stripBounds.left
+        - thumbStrip.clientLeft + (thumbBounds.width - thumbStrip.clientWidth) / 2
+      thumbStrip.scrollTo({
+        left: Math.max(0, Math.min(centeredLeft, thumbStrip.scrollWidth - thumbStrip.clientWidth)),
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+      })
+    }
+
+    if (!frame || !photo) {
       return
     }
 
-    $gsap.killTweensOf([background, photo, activeThumb])
+    $gsap.killTweensOf(activeThumb ? [photo, activeThumb] : [photo])
     $gsap.timeline({ defaults: { ease: 'power3.out' } })
-      .fromTo(background, {
-        xPercent: direction * 5,
-        scale: 1.22,
-        opacity: 0.18
-      }, {
-        xPercent: 0,
-        scale: 1.14,
-        opacity: 0.74,
-        duration: 0.82
-      }, 0)
       .fromTo(photo, {
         xPercent: direction * 22,
         scale: 0.985,
@@ -614,11 +651,17 @@ onBeforeUnmount(() => {
     </div>
 
     <section class="hero">
+      <picture>
+        <source
+          media="(min-width: 821px)"
+          srcset="https://pub-3395f4cf2cdf4d4f8c9fe93858d7da4a.r2.dev/FTW09171.jpg.webp"
+        >
       <img
         class="hero-photo"
-        src="/photos/IMG_0139.webp"
+        src="https://pub-3395f4cf2cdf4d4f8c9fe93858d7da4a.r2.dev/FTW08989.jpg.webp"
         alt="Đình Dương và Thu Hà trong trang phục cưới"
       >
+      </picture>
       <div class="hero-shade" />
 
       <div
@@ -672,7 +715,8 @@ onBeforeUnmount(() => {
         class="countdown-box"
         :data-countdown-index="index"
       >
-        <div class="countdown-digits" aria-live="polite" :aria-label="`${item.value} ${item.label}`">
+        <component :is="countdownIcons[index]" class="countdown-icon" :size="21" :stroke-width="1.25" aria-hidden="true" />
+        <div class="countdown-digits" :aria-label="`${item.value} ${item.label}`">
           <span
             v-for="(digit, digitIndex) in item.value.split('')"
             :key="`${item.label}-${digitIndex}`"
@@ -689,7 +733,7 @@ onBeforeUnmount(() => {
     <section class="story section">
       <div class="story-media reveal">
         <img
-          src="/photos/IMG_0142.webp"
+          src="https://pub-3395f4cf2cdf4d4f8c9fe93858d7da4a.r2.dev/TSU_8269.jpg.webp"
           alt="Đình Dương và Thu Hà cùng nhau trong ngày chụp cưới"
         >
       </div>
@@ -726,18 +770,35 @@ onBeforeUnmount(() => {
         <p class="eyebrow">Gallery</p>
         <h2 style="line-height: 1.2;">Những khung hình thay cho lời kể</h2>
       </div>
-      <div class="gallery-slider reveal">
-        <div class="gallery-frame">
+      <p v-if="galleryStatus === 'pending'" role="status">Đang tải ảnh...</p>
+      <div v-else-if="galleryError" role="alert">
+        <p>Chưa tải được album ảnh.</p>
+        <button type="button" @click="refreshGallery()">Thử lại</button>
+      </div>
+      <p v-else-if="!galleryImages.length">Album chưa có ảnh.</p>
+      <div v-show="galleryImages.length" class="gallery-slider reveal">
+        <div
+          v-if="activeGalleryImage"
+          class="gallery-frame"
+          :class="{ 'is-portrait': galleryAspectRatio < 1 }"
+          :style="{ '--gallery-ratio': galleryAspectRatio }"
+          @touchstart.passive="startGallerySwipe"
+          @touchmove.passive="moveGallerySwipe"
+          @touchend.passive="endGallerySwipe"
+          @touchcancel="galleryTouch = undefined"
+        >
           <img
-            class="gallery-frame__background"
+            class="gallery-frame__backdrop"
             :src="activeGalleryImage"
             alt=""
             aria-hidden="true"
           >
           <img
             class="gallery-frame__photo"
+            draggable="false"
             :key="activeGalleryImage"
             :src="activeGalleryImage"
+            @load="updateGalleryAspectRatio"
             alt="Ảnh cưới của Đình Dương và Thu Hà"
           >
           <button
@@ -767,7 +828,7 @@ onBeforeUnmount(() => {
             :aria-label="`Xem ảnh cưới ${index + 1}`"
             @click="showGalleryImage(index)"
           >
-            <img :src="image" alt="">
+            <img :src="image" alt="" loading="lazy" decoding="async">
           </button>
         </div>
       </div>
@@ -1187,29 +1248,52 @@ p {
 }
 
 .countdown-section {
-  width: min(100% - 36px, 860px);
+  width: min(100% - 24px, 480px);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: clamp(10px, 2vw, 18px);
+  gap: 8px;
   margin: 0 auto;
-  padding: 22px 0;
+  padding: 12px 0 24px;
 }
 
 .countdown-box {
   display: grid;
-  gap: 12px;
-  min-height: 128px;
+  grid-template-rows: 22px 42px 1px 20px;
+  gap: 6px;
+  min-width: 0;
+  height: 128px;
   place-items: center;
-  padding: 0;
-  background: transparent;
+  padding: 12px 4px;
+  border: 1px solid #edcb98;
+  border-radius: 8px;
+  background: #fffdf8;
+  box-shadow: 0 5px 12px rgb(157 116 54 / 10%);
   perspective: 900px;
+}
+
+.countdown-icon {
+  color: #dcb474;
+}
+
+.countdown-digits::after {
+  content: none;
+}
+
+.countdown-label::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 1px;
+  background: #e5bb7e;
+  top: -7px;
+  left: calc(50% - 8px);
 }
 
 .countdown-digits {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 0;
   min-width: 100%;
 }
 
@@ -1219,12 +1303,13 @@ p {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: clamp(42px, 6.2vw, 62px);
-  aspect-ratio: 0.76;
+  width: 0.58em;
+  height: 42px;
+  font-size: 36px;
   overflow: hidden;
-  border: 1.25px solid #746b62;
-  border-radius: 8px;
-  background: rgba(255, 254, 250, 0.92);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
   color: #211a16;
   transform-style: preserve-3d;
@@ -1235,7 +1320,7 @@ p {
   z-index: 2;
   display: block;
   font-family: var(--number-font);
-  font-size: clamp(2.05rem, 5.2vw, 3.4rem);
+  font-size: inherit;
   font-weight: 700;
   line-height: 1;
   transform: translateY(-0.03em);
@@ -1243,9 +1328,11 @@ p {
 }
 
 .countdown-label {
-  color: #4f4139;
+  position: relative;
+  grid-row: 4;
+  color: #92795e;
   font-family: var(--number-font);
-  font-size: clamp(0.88rem, 2.8vw, 1.12rem);
+  font-size: 14px;
   font-style: italic;
   font-weight: 600;
 }
@@ -1322,39 +1409,37 @@ p {
 }
 
 .gallery-frame {
+  touch-action: pan-y pinch-zoom;
   position: relative;
   display: grid;
   place-items: center;
-  min-height: clamp(480px, 68vw, 760px);
+  height: min(72vh, 760px);
+  height: min(72svh, 760px);
+  min-height: 0;
   overflow: hidden;
-  background: #1f1916;
+  background: transparent;
 }
 
-.gallery-frame__background,
 .gallery-frame__photo {
   display: block;
   grid-area: 1 / 1;
-  height: clamp(480px, 68vw, 760px);
-}
-
-.gallery-frame__background {
-  position: absolute;
-  inset: -36px;
-  width: calc(100% + 72px);
-  height: calc(100% + 72px);
-  object-fit: cover;
-  opacity: 0.74;
-  filter: blur(26px);
-  transform: scale(1.14);
-}
-
-.gallery-frame__photo {
   position: relative;
   z-index: 1;
-  width: min(100%, 620px);
-  height: clamp(480px, 68vw, 760px);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   object-fit: contain;
-  box-shadow: 0 24px 70px rgba(36, 27, 22, 0.28);
+}
+
+.gallery-frame__backdrop {
+  display: block;
+  position: absolute;
+  inset: -32px;
+  width: calc(100% + 64px);
+  height: calc(100% + 64px);
+  object-fit: cover;
+  filter: blur(24px) brightness(0.72);
+  pointer-events: none;
 }
 
 .gallery-nav {
@@ -1653,6 +1738,109 @@ button:disabled {
   transform: translateY(36px);
 }
 
+@media (min-width: 821px) {
+  .gallery-frame:not(.is-portrait) .gallery-frame__backdrop {
+    display: none;
+  }
+
+  .gallery-frame.is-portrait {
+    --portrait-width: min(100%, calc(min(72vh, 760px) * var(--gallery-ratio)));
+    --portrait-width: min(100%, calc(min(72svh, 760px) * var(--gallery-ratio)));
+    background: #282421;
+  }
+
+  .gallery-frame.is-portrait .gallery-frame__photo {
+    width: var(--portrait-width);
+  }
+
+  .gallery-frame.is-portrait .gallery-nav--prev {
+    left: max(12px, calc((100% - var(--portrait-width)) / 2 - 60px));
+  }
+
+  .gallery-frame.is-portrait .gallery-nav--next {
+    right: max(12px, calc((100% - var(--portrait-width)) / 2 - 60px));
+  }
+
+  .section {
+    padding-block: 48px;
+  }
+
+  .intro {
+    padding-top: 72px;
+    padding-bottom: 32px;
+  }
+
+  .intro > p:last-child,
+  .story-copy > p:last-child,
+  .rsvp-copy > p:last-child {
+    margin-bottom: 0;
+  }
+
+  .section > .script,
+  .section-heading > .script {
+    margin-bottom: 20px;
+  }
+
+  .section-heading {
+    margin-bottom: 28px;
+  }
+
+  .timeline-list,
+  .wish-list {
+    margin-top: 28px;
+  }
+
+  .gallery {
+    padding-bottom: 64px;
+  }
+
+  .venue {
+    padding-block: 56px;
+  }
+
+  .rsvp {
+    padding-top: 64px;
+  }
+
+  .wishes {
+    padding-bottom: 72px;
+  }
+
+  .countdown-section {
+    width: min(100% - 48px, 720px);
+    gap: 16px;
+    padding: 8px 0 12px;
+  }
+
+  .countdown-box {
+    height: 170px;
+    grid-template-rows: 28px 58px 1px 24px;
+    gap: 7px;
+    padding: 18px 12px;
+  }
+
+  .countdown-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .countdown-digit {
+    height: 58px;
+    font-size: 50px;
+  }
+
+  .countdown-label {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  .countdown-label::before {
+    width: 22px;
+    left: calc(50% - 11px);
+    top: -8px;
+  }
+}
+
 @media (max-width: 820px) {
   .hero {
     min-height: 100vh;
@@ -1742,18 +1930,61 @@ button:disabled {
 
   .section {
     width: min(100% - 28px, 1120px);
-    padding: 68px 0;
+    padding: 32px 0;
+  }
+
+  .intro {
+    padding-top: 48px;
+    padding-bottom: 24px;
+  }
+
+  .intro > p:last-child,
+  .story-copy > p:last-child,
+  .rsvp-copy > p:last-child {
+    margin-bottom: 0;
+  }
+
+  .section > .script,
+  .section-heading > .script {
+    margin-bottom: 18px;
+  }
+
+  .section-heading {
+    margin-bottom: 24px;
+  }
+
+  .timeline-list,
+  .wish-list {
+    margin-top: 24px;
+  }
+
+  .gallery {
+    padding-bottom: 40px;
+  }
+
+  .venue {
+    padding-block: 36px;
+  }
+
+  .rsvp {
+    padding-top: 40px;
+  }
+
+  .wishes {
+    padding-bottom: 56px;
   }
 
   .countdown-section {
-    grid-template-columns: repeat(2, 1fr);
-    width: min(100% - 28px, 420px);
-    gap: 18px 12px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: min(100% - 24px, 480px);
+    gap: 8px;
+    padding-block: 8px 12px;
   }
 
   .story,
   .rsvp {
     grid-template-columns: 1fr;
+    gap: 24px;
   }
 
   .wish-list article {
@@ -1761,17 +1992,26 @@ button:disabled {
   }
 
   .gallery-frame {
-    min-height: min(72vh, 620px);
+    height: min(70vh, 560px);
+    height: min(70svh, 560px);
+    min-height: 0;
+    width: 100%;
+    aspect-ratio: auto;
+    background: transparent;
   }
 
   .gallery-frame__photo {
+    position: absolute;
+    inset: 0;
     width: 100%;
-    height: min(72vh, 620px);
+    height: 100%;
+    box-shadow: none;
   }
 
-  .gallery-frame__background {
-    height: calc(100% + 72px);
+  .gallery-frame {
+    background: #282421;
   }
+
 
   .gallery-nav {
     width: 42px;
@@ -1793,6 +2033,8 @@ button:disabled {
 
   .timeline-item {
     grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 20px;
   }
 
   .music-toggle {
