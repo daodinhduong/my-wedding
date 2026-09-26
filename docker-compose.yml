@@ -9,6 +9,11 @@ services:
       NUXT_DATABASE_URL: postgres://nuxt:${DB_PASSWORD:?DB_PASSWORD must be set in .env}@db:5432/nuxt_app
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set in .env}
       NUXT_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set in .env}
+      NUXT_R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-7038d397c5a91426b229ba5922ccf48a}
+      NUXT_R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID must be set in .env}
+      NUXT_R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?R2_SECRET_ACCESS_KEY must be set in .env}
+      NUXT_R2_BUCKET_NAME: ${R2_BUCKET_NAME:-wedding-images}
+      NUXT_R2_PUBLIC_URL: ${R2_PUBLIC_URL:-https://pub-3395f4cf2cdf4d4f8c9fe93858d7da4a.r2.dev}
     depends_on:
       db:
         condition: service_healthy
