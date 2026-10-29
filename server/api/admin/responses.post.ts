@@ -10,6 +10,7 @@ type CreateAdminWeddingResponseBody = {
   wishMessage?: unknown
   attendanceStatus?: unknown
   guestCount?: unknown
+  invitationSide?: unknown
 }
 
 const attendanceStatuses: AttendanceStatus[] = ['attending', 'not_attending']
@@ -25,6 +26,7 @@ export default defineEventHandler(async (event) => {
     : undefined
   const rawGuestCount = Number(body.guestCount)
   const guestCount = attendanceStatus === 'attending' ? rawGuestCount : 0
+  const invitationSide = body.invitationSide
 
   if (!guestName) {
     throw createError({ statusCode: 400, statusMessage: 'Vui long nhap ten khach moi.' })
@@ -32,6 +34,10 @@ export default defineEventHandler(async (event) => {
 
   if (!attendanceStatus) {
     throw createError({ statusCode: 400, statusMessage: 'Trang thai tham du khong hop le.' })
+  }
+
+  if (invitationSide !== 'nha-trai' && invitationSide !== 'nha-gai') {
+    throw createError({ statusCode: 400, statusMessage: 'Ben moi khong hop le.' })
   }
 
   if (attendanceStatus === 'attending' && (!Number.isInteger(guestCount) || guestCount < 1 || guestCount > 20)) {
@@ -48,7 +54,8 @@ export default defineEventHandler(async (event) => {
       attendanceStatus,
       guestCount,
       isApproved: false,
-      responseSource: 'admin'
+      responseSource: 'admin',
+      invitationSide
     }
   })
 

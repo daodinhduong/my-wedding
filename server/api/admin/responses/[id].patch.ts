@@ -9,6 +9,7 @@ type UpdateResponseBody = {
   isApproved?: unknown
   attendanceStatus?: unknown
   guestCount?: unknown
+  invitationSide?: unknown
 }
 
 const attendanceStatuses: AttendanceStatus[] = ['attending', 'not_attending']
@@ -25,14 +26,19 @@ export default defineEventHandler(async (event) => {
 
   const hasApprovalUpdate = typeof body.isApproved === 'boolean'
   const hasAttendanceUpdate = body.attendanceStatus !== undefined || body.guestCount !== undefined
+  const hasSideUpdate = body.invitationSide !== undefined
   const attendanceStatus = attendanceStatuses.includes(body.attendanceStatus as AttendanceStatus)
     ? body.attendanceStatus as AttendanceStatus
     : undefined
   const rawGuestCount = Number(body.guestCount)
   const guestCount = attendanceStatus === 'attending' ? rawGuestCount : 0
 
-  if (!hasApprovalUpdate && !hasAttendanceUpdate) {
+  if (!hasApprovalUpdate && !hasAttendanceUpdate && !hasSideUpdate) {
     throw createError({ statusCode: 400, statusMessage: 'Khong co du lieu cap nhat.' })
+  }
+
+  if (hasSideUpdate && body.invitationSide !== null && body.invitationSide !== 'nha-trai' && body.invitationSide !== 'nha-gai') {
+    throw createError({ statusCode: 400, statusMessage: 'Ben moi khong hop le.' })
   }
 
   if (body.isApproved !== undefined && !hasApprovalUpdate) {
@@ -64,13 +70,15 @@ export default defineEventHandler(async (event) => {
     where: { id: recordId },
     data: {
       ...(hasApprovalUpdate ? { isApproved: body.isApproved as boolean } : {}),
-      ...(hasAttendanceUpdate ? { attendanceStatus, guestCount } : {})
+      ...(hasAttendanceUpdate ? { attendanceStatus, guestCount } : {}),
+      ...(hasSideUpdate ? { invitationSide: body.invitationSide as string | null } : {})
     },
     select: {
       id: true,
       isApproved: true,
       attendanceStatus: true,
-      guestCount: true
+      guestCount: true,
+      invitationSide: true
     }
   })
 

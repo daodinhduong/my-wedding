@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
       guestCount: true,
       isApproved: true,
       responseSource: true,
+      invitationSide: true,
       createdAt: true
     }
   })

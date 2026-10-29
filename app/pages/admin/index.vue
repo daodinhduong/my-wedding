@@ -7,6 +7,7 @@ type AdminWeddingResponse = {
   guestCount: number
   isApproved: boolean
   responseSource: 'website' | 'admin'
+  invitationSide: 'nha-trai' | 'nha-gai' | null
   createdAt: string
 }
 
@@ -15,9 +16,12 @@ type CreateResponseForm = {
   wishMessage: string
   attendanceStatus: 'attending' | 'not_attending'
   guestCount: number
+  invitationSide: 'nha-trai' | 'nha-gai'
 }
 
 const password = ref('')
+const authenticatedPassword = ref('')
+const activeTab = ref<'responses' | 'gallery'>('responses')
 const isUnlocked = ref(false)
 const isLoading = ref(false)
 const isCreateDialogOpen = ref(false)
@@ -28,6 +32,12 @@ const errorMessage = ref('')
 const createStatusMessage = ref('')
 const editStatusMessage = ref('')
 const responses = ref<AdminWeddingResponse[]>([])
+const sideFilter = ref<'all' | 'nha-trai' | 'nha-gai' | 'unassigned'>('all')
+const filteredResponses = computed(() => responses.value.filter((item) => {
+  if (sideFilter.value === 'all') return true
+  if (sideFilter.value === 'unassigned') return item.invitationSide === null
+  return item.invitationSide === sideFilter.value
+}))
 const updatingIds = ref(new Set<string>())
 const deletingIds = ref(new Set<string>())
 const editingResponse = ref<AdminWeddingResponse | null>(null)
@@ -35,17 +45,19 @@ const createForm = reactive<CreateResponseForm>({
   guestName: '',
   wishMessage: '',
   attendanceStatus: 'attending',
-  guestCount: 1
+  guestCount: 1,
+  invitationSide: 'nha-trai'
 })
 const editForm = reactive({
   attendanceStatus: 'attending' as 'attending' | 'not_attending',
-  guestCount: 1
+  guestCount: 1,
+  invitationSide: null as AdminWeddingResponse['invitationSide']
 })
 
-const approvedCount = computed(() => responses.value.filter((item) => item.isApproved).length)
-const pendingCount = computed(() => responses.value.filter((item) => !item.isApproved).length)
+const approvedCount = computed(() => filteredResponses.value.filter((item) => item.isApproved).length)
+const pendingCount = computed(() => filteredResponses.value.filter((item) => !item.isApproved).length)
 const approvedGuestCount = computed(() => {
-  return responses.value.reduce((total, item) => {
+  return filteredResponses.value.reduce((total, item) => {
     if (!item.isApproved || item.attendanceStatus !== 'attending') {
       return total
     }
@@ -56,7 +68,7 @@ const approvedGuestCount = computed(() => {
 
 function getAdminHeaders() {
   return {
-    'x-admin-password': password.value
+    'x-admin-password': authenticatedPassword.value || password.value
   }
 }
 
@@ -69,6 +81,7 @@ async function loadResponses() {
       headers: getAdminHeaders()
     })
     isUnlocked.value = true
+    authenticatedPassword.value = password.value
   }
   catch (error) {
     isUnlocked.value = false
@@ -131,6 +144,7 @@ async function deleteResponse(response: AdminWeddingResponse) {
 function openCreateDialog() {
   errorMessage.value = ''
   createStatusMessage.value = ''
+  createForm.invitationSide = sideFilter.value === 'nha-gai' ? 'nha-gai' : 'nha-trai'
   isCreateDialogOpen.value = true
 }
 
@@ -148,9 +162,11 @@ function resetCreateForm() {
   createForm.wishMessage = ''
   createForm.attendanceStatus = 'attending'
   createForm.guestCount = 1
+  createForm.invitationSide = 'nha-trai'
 }
 
 function openEditDialog(response: AdminWeddingResponse) {
+  editForm.invitationSide = response.invitationSide
   if (response.attendanceStatus === 'pending') {
     editForm.attendanceStatus = 'attending'
     editForm.guestCount = 1
@@ -193,7 +209,8 @@ async function createResponse() {
         guestName: createForm.guestName,
         wishMessage: createForm.wishMessage,
         attendanceStatus: createForm.attendanceStatus,
-        guestCount: createForm.attendanceStatus === 'attending' ? createForm.guestCount : 0
+        guestCount: createForm.attendanceStatus === 'attending' ? createForm.guestCount : 0,
+        invitationSide: createForm.invitationSide
       }
     })
 
@@ -226,18 +243,21 @@ async function updateResponseAttendance() {
       isApproved: boolean
       attendanceStatus: AdminWeddingResponse['attendanceStatus']
       guestCount: number
+      invitationSide: AdminWeddingResponse['invitationSide']
     }>(`/api/admin/responses/${response.id}`, {
       method: 'PATCH',
       headers: getAdminHeaders(),
       body: {
         attendanceStatus: editForm.attendanceStatus,
-        guestCount: editForm.attendanceStatus === 'attending' ? editForm.guestCount : 0
+        guestCount: editForm.attendanceStatus === 'attending' ? editForm.guestCount : 0,
+        invitationSide: editForm.invitationSide
       }
     })
 
     response.attendanceStatus = updated.attendanceStatus
     response.guestCount = updated.guestCount
     response.isApproved = updated.isApproved
+    response.invitationSide = updated.invitationSide
     isEditDialogOpen.value = false
     editStatusMessage.value = ''
     editingResponse.value = null
@@ -264,6 +284,12 @@ function formatAttendance(status: AdminWeddingResponse['attendanceStatus']) {
 
 function formatResponseSource(source: AdminWeddingResponse['responseSource']) {
   return source === 'admin' ? 'Admin thêm' : 'Khách nhập'
+}
+
+function formatInvitationSide(side: AdminWeddingResponse['invitationSide']) {
+  if (side === 'nha-trai') return 'Nhà trai'
+  if (side === 'nha-gai') return 'Nhà gái'
+  return 'Chưa phân loại'
 }
 
 function formatCreatedAt(value: string) {
@@ -302,6 +328,14 @@ function formatCreatedAt(value: string) {
     </section>
 
     <section v-else class="admin-shell">
+      <div class="admin-tabs" role="tablist" aria-label="Quản lý">
+        <button type="button" role="tab" :aria-selected="activeTab === 'responses'" :class="{ active: activeTab === 'responses' }" @click="activeTab = 'responses'">Phản hồi</button>
+        <button type="button" role="tab" :aria-selected="activeTab === 'gallery'" :class="{ active: activeTab === 'gallery' }" @click="activeTab = 'gallery'">Album ảnh</button>
+      </div>
+      <KeepAlive>
+        <AdminGallery v-if="activeTab === 'gallery'" :admin-password="authenticatedPassword" />
+      </KeepAlive>
+      <div v-if="activeTab === 'responses'" class="responses-panel" role="tabpanel">
       <header class="admin-header">
         <div>
           <p class="eyebrow">Admin</p>
@@ -309,7 +343,7 @@ function formatCreatedAt(value: string) {
         </div>
 
         <div class="admin-actions">
-          <span>{{ responses.length }} bản ghi</span>
+          <span>{{ filteredResponses.length }} bản ghi</span>
           <span>{{ pendingCount }} chờ duyệt</span>
           <span>{{ approvedCount }} đã duyệt</span>
           <span>{{ approvedGuestCount }} khách mời</span>
@@ -321,6 +355,16 @@ function formatCreatedAt(value: string) {
 
       <p v-if="errorMessage" class="status is-error">{{ errorMessage }}</p>
 
+      <label class="side-filter">
+        Lọc khách mời
+        <select v-model="sideFilter">
+          <option value="all">Tất cả</option>
+          <option value="nha-trai">Nhà trai</option>
+          <option value="nha-gai">Nhà gái</option>
+          <option value="unassigned">Chưa phân loại</option>
+        </select>
+      </label>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -329,16 +373,17 @@ function formatCreatedAt(value: string) {
               <th>Lời chúc</th>
               <th>Tham dự</th>
               <th>Số người</th>
+              <th>Bên mời</th>
               <th>Nguồn</th>
               <th>Ngày gửi</th>
               <th>Hiển thị</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="!responses.length">
-              <td colspan="7" class="empty-state">Chưa có phản hồi nào.</td>
+            <tr v-if="!filteredResponses.length">
+              <td colspan="8" class="empty-state">Không có phản hồi trong bộ lọc này.</td>
             </tr>
-            <tr v-for="response in responses" :key="response.id">
+            <tr v-for="response in filteredResponses" :key="response.id">
               <td>
                 <strong>{{ response.guestName }}</strong>
                 <small>#{{ response.id }}</small>
@@ -348,6 +393,7 @@ function formatCreatedAt(value: string) {
               </td>
               <td>{{ formatAttendance(response.attendanceStatus) }}</td>
               <td>{{ response.guestCount }}</td>
+              <td>{{ formatInvitationSide(response.invitationSide) }}</td>
               <td>
                 <span class="source-badge" :class="`is-${response.responseSource}`">
                   {{ formatResponseSource(response.responseSource) }}
@@ -429,6 +475,14 @@ function formatCreatedAt(value: string) {
             </label>
 
             <label>
+              Bên mời
+              <select v-model="createForm.invitationSide">
+                <option value="nha-trai">Nhà trai</option>
+                <option value="nha-gai">Nhà gái</option>
+              </select>
+            </label>
+
+            <label>
               Trạng thái tham dự
               <select v-model="createForm.attendanceStatus">
                 <option value="attending">Tham dự</option>
@@ -500,6 +554,15 @@ function formatCreatedAt(value: string) {
 
           <form class="create-form" @submit.prevent="updateResponseAttendance">
             <label>
+              Bên mời
+              <select v-model="editForm.invitationSide">
+                <option :value="null">Chưa phân loại</option>
+                <option value="nha-trai">Nhà trai</option>
+                <option value="nha-gai">Nhà gái</option>
+              </select>
+            </label>
+
+            <label>
               Trạng thái tham dự
               <select v-model="editForm.attendanceStatus">
                 <option value="attending">Tham dự</option>
@@ -530,6 +593,7 @@ function formatCreatedAt(value: string) {
             </div>
           </form>
         </section>
+      </div>
       </div>
     </section>
   </main>
@@ -647,6 +711,36 @@ button:disabled {
 .admin-shell {
   display: grid;
   gap: 22px;
+}
+
+.responses-panel {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+  padding: clamp(16px, 3vw, 28px);
+  border: 1px solid #e2d4c9;
+  background: #fffdf9;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #e2d4c9;
+}
+
+.admin-tabs button {
+  border-radius: 8px 8px 0 0;
+  background: #e9ded5;
+  color: #6f3d34;
+}
+
+.admin-tabs button.active {
+  background: #6f3d34;
+  color: #fff;
+}
+
+.side-filter {
+  width: min(100%, 240px);
 }
 
 .admin-header {
