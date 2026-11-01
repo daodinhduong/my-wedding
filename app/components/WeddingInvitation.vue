@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { CalendarDays, Clock3, Hourglass, Heart } from 'lucide-vue-next'
 
-const props = defineProps<{ side: 'nha-trai' | 'nha-gai' }>()
+const props = defineProps<{ side: 'nha-trai' | 'nha-gai', announcement?: boolean }>()
+const route = useRoute()
+const isParentsInvitation = computed(() => route.query.inviter === 'parents')
+const guestAddress = computed(() => isParentsInvitation.value ? 'quý vị' : 'bạn')
+const introTitle = computed(() => isParentsInvitation.value
+  ? (props.announcement ? 'Trân trọng báo tin thành hôn của hai con' : 'Kính mời quý vị đến chung vui cùng gia đình')
+  : (props.announcement ? 'Chúng tôi sắp về chung một nhà' : 'Gia đình và những người thương đến chung vui trong ngày thành hôn'))
 const venue = computed(() => props.side === 'nha-gai'
   ? {
       name: 'Sunflower Palace',
@@ -16,9 +22,9 @@ const venue = computed(() => props.side === 'nha-gai'
 
 const countdownIcons = [CalendarDays, Clock3, Hourglass, Heart]
 const siteUrl = 'https://duonghawedding.io.vn/'
-const pageUrl = computed(() => `${siteUrl}${props.side}`)
+const pageUrl = computed(() => `${siteUrl}${props.announcement ? 'bao-hy' : props.side}${isParentsInvitation.value ? '?inviter=parents' : ''}`)
 const socialImageUrl = `${siteUrl}photos/og-wedding.png?v=3`
-const pageTitle = 'Thiệp cưới Đình Dương & Thu Hà'
+const pageTitle = computed(() => props.announcement ? 'Báo hỷ Đình Dương & Thu Hà' : 'Thiệp cưới Đình Dương & Thu Hà')
 const weddingDate = computed(() => new Date(props.side === 'nha-gai'
   ? '2026-11-28T10:00:00+07:00'
   : '2026-11-29T10:00:00+07:00'))
@@ -26,7 +32,13 @@ const weddingDateText = computed(() => props.side === 'nha-gai' ? '28.11.2026' :
 const weddingDateTimeText = computed(() => props.side === 'nha-gai'
   ? '10:00, Thứ Bảy, 28.11.2026'
   : '10:00, Chủ nhật, 29.11.2026')
-const pageDescription = computed(() => `Trân trọng kính mời bạn đến chung vui trong ngày thành hôn của Đình Dương và Thu Hà, ngày ${weddingDateTimeText.value}.`)
+const pageDescription = computed(() => isParentsInvitation.value
+  ? (props.announcement
+      ? `Gia đình chúng tôi trân trọng báo tin lễ thành hôn của hai con Đình Dương và Thu Hà sẽ được tổ chức vào ngày ${weddingDateText.value}. Kính gửi tin vui đến quý vị cùng lời cảm ơn chân thành.`
+      : `Gia đình chúng tôi trân trọng kính mời quý vị đến chung vui trong lễ thành hôn của hai con Đình Dương và Thu Hà, vào ${weddingDateTimeText.value}.`)
+  : props.announcement
+  ? `Đình Dương và Thu Hà trân trọng báo hỷ. Lễ thành hôn của chúng tôi sẽ được tổ chức vào ngày ${weddingDateText.value}. Xin chia sẻ niềm vui này cùng gia đình, người thân và bạn bè gần xa.`
+  : `Trân trọng kính mời bạn đến chung vui trong ngày thành hôn của Đình Dương và Thu Hà, ngày ${weddingDateTimeText.value}.`)
 
 useSeoMeta({
   title: pageTitle,
@@ -132,8 +144,8 @@ function syncIntroScrollLock() {
 const form = reactive<RsvpForm>({
   guestName: '',
   wishMessage: '',
-  attendanceStatus: 'attending',
-  guestCount: 2
+  attendanceStatus: props.announcement ? 'not_attending' : 'attending',
+  guestCount: props.announcement ? 0 : 2
 })
 
 const { data: galleryImages, status: galleryStatus, error: galleryError, refresh: refreshGallery } = await useFetch<string[]>('/api/gallery', {
@@ -255,7 +267,7 @@ const submitLabel = computed(() => {
     return 'Đang gửi...'
   }
 
-  return form.attendanceStatus === 'attending' ? 'Gửi xác nhận tham dự' : 'Gửi lời chúc'
+  return !props.announcement && form.attendanceStatus === 'attending' ? 'Gửi xác nhận tham dự' : 'Gửi lời chúc'
 })
 
 async function submitRsvp() {
@@ -272,23 +284,23 @@ async function submitRsvp() {
       body: {
         guestName: form.guestName,
         wishMessage: form.wishMessage,
-        attendanceStatus: form.attendanceStatus,
-        guestCount: form.attendanceStatus === 'attending' ? form.guestCount : 0,
+        attendanceStatus: props.announcement ? 'not_attending' : form.attendanceStatus,
+        guestCount: !props.announcement && form.attendanceStatus === 'attending' ? form.guestCount : 0,
         invitationSide: props.side
       }
     })
 
     form.guestName = ''
     form.wishMessage = ''
-    form.attendanceStatus = 'attending'
-    form.guestCount = 2
+    form.attendanceStatus = props.announcement ? 'not_attending' : 'attending'
+    form.guestCount = props.announcement ? 0 : 2
     rsvpStatusTone.value = 'success'
-    rsvpStatusMessage.value = 'Cảm ơn bạn. Lời chúc sẽ hiển thị sau khi được duyệt.'
+    rsvpStatusMessage.value = `Cảm ơn ${guestAddress.value}. Lời chúc sẽ hiển thị sau khi được duyệt.`
     await refreshWishes()
   }
   catch (error) {
     rsvpStatusTone.value = 'error'
-    rsvpStatusMessage.value = error instanceof Error ? error.message : 'Không thể gửi xác nhận lúc này.'
+    rsvpStatusMessage.value = error instanceof Error ? error.message : (props.announcement ? 'Không thể gửi lời chúc lúc này.' : 'Không thể gửi xác nhận lúc này.')
   }
   finally {
     isSubmittingRsvp.value = false
@@ -654,11 +666,11 @@ onBeforeUnmount(() => {
         class="invitation-card"
         type="button"
         :disabled="isIntroAnimating"
-        aria-label="Mở thiệp cưới"
+        :aria-label="announcement ? 'Mở thiệp báo hỷ' : 'Mở thiệp cưới'"
       >
         <span class="invitation-card__inside">
           <span class="invitation-card__ornament" aria-hidden="true" />
-          <span class="invitation-card__script">Wedding invitation</span>
+          <span class="invitation-card__script">{{ announcement ? 'Trân trọng báo hỷ' : 'Wedding invitation' }}</span>
           <span class="invitation-card__names">Đình Dương<br>Thu Hà</span>
           <span class="invitation-card__date">{{ weddingDateText }}</span>
           <span class="invitation-card__hint">Chạm để mở thiệp</span>
@@ -710,24 +722,33 @@ onBeforeUnmount(() => {
 
       <div class="hero-copy">
         <h1>
-          <span class="hero-script">Wedding</span>
+          <span class="hero-script">{{ announcement ? 'Báo hỷ' : 'Wedding' }}</span>
           <span class="hero-names">Đình Dương<br>Thu Hà</span>
         </h1>
-        <p class="hero-date">{{ weddingDateTimeText }}</p>
-        <a class="hero-action" href="#rsvp">Xác nhận tham dự</a>
+        <p class="hero-date">{{ announcement ? weddingDateText : weddingDateTimeText }}</p>
+        <a class="hero-action" :href="announcement ? '#announcement' : '#rsvp'">{{ announcement ? (isParentsInvitation ? 'Trân trọng báo hỷ' : 'Thương gửi tin vui') : 'Xác nhận tham dự' }}</a>
       </div>
     </section>
 
-    <section class="intro section reveal">
-      <p class="script">Trân trọng kính mời</p>
-      <h2 style="line-height: 1.2;">Gia đình và những người thương đến chung vui trong ngày thành hôn</h2>
-      <p>
+    <section :id="announcement ? 'announcement' : undefined" class="intro section reveal">
+      <p class="script">{{ announcement ? (isParentsInvitation ? 'Trân trọng báo hỷ' : 'Thương gửi tin vui') : 'Trân trọng kính mời' }}</p>
+      <h2 style="line-height: 1.2;">{{ introTitle }}</h2>
+      <template v-if="isParentsInvitation">
+        <p>Gia đình chúng tôi {{ announcement ? 'trân trọng báo tin lễ thành hôn của hai con' : 'trân trọng kính mời quý vị đến dự lễ thành hôn của hai con' }}<br><strong>Đình Dương &amp; Thu Hà</strong><br>{{ announcement ? 'sẽ được tổ chức vào ngày' : 'được tổ chức vào' }} {{ announcement ? weddingDateText : weddingDateTimeText }}.</p>
+        <p v-if="announcement">Gia đình chúng tôi xin được chia sẻ niềm vui này cùng quý vị. Dù cách trở đường xa, tình cảm và những lời chúc phúc của quý vị luôn là món quà quý giá dành cho hai con và gia đình.</p>
+        <p v-else>Sự hiện diện và lời chúc phúc của quý vị là niềm vinh hạnh của gia đình chúng tôi, đồng thời là món quà ý nghĩa dành cho hai con trong ngày thành hôn.</p>
+      </template>
+      <template v-else-if="announcement">
+        <p>Đình Dương và Thu Hà trân trọng báo hỷ.<br>Lễ thành hôn của chúng tôi sẽ được tổ chức vào ngày {{ weddingDateText }}.</p>
+        <p>Chúng tôi xin gửi tin vui này đến gia đình, người thân và bạn bè gần xa. Dù chưa thể gặp nhau trong ngày cưới, chúng tôi luôn trân quý tình cảm và những lời chúc phúc của bạn.</p>
+      </template>
+      <p v-else>
         Sự hiện diện của bạn là món quà dịu dàng nhất dành cho chúng tôi trong
         hành trình bắt đầu một chương mới.
       </p>
     </section>
 
-    <section class="countdown-section reveal" aria-label="Đồng hồ đếm ngược">
+    <section v-if="!announcement" class="countdown-section reveal" aria-label="Đồng hồ đếm ngược">
       <div
         v-for="(item, index) in countdown"
         :key="item.label"
@@ -757,9 +778,10 @@ onBeforeUnmount(() => {
         >
       </div>
       <div class="story-copy reveal">
-        <p class="eyebrow">Our story</p>
+        <p class="eyebrow">{{ isParentsInvitation ? 'Câu chuyện của hai con' : 'Our story' }}</p>
         <h2 style="line-height: 1.2;">Một lời hẹn, một mùa thương</h2>
-        <p>
+        <p v-if="isParentsInvitation">Từ những ngày đầu gặp gỡ đến khi quyết định cùng nhau xây dựng tổ ấm, Đình Dương và Thu Hà đã có một hành trình đầy yêu thương. Gia đình chúng tôi hạnh phúc khi được chứng kiến hai con bước sang một chặng đường mới.</p>
+        <p v-else>
           Chúng tôi gặp nhau trong những ngày rất bình thường, rồi cùng nhau
           gom góp từng khoảnh khắc nhỏ thành một câu chuyện đủ đầy.
         </p>
@@ -770,7 +792,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <section class="timeline section reveal">
+    <section v-if="!announcement" class="timeline section reveal">
       <p class="script">Wedding day</p>
       <h2>Lịch trình buổi tiệc</h2>
       <div class="timeline-list">
@@ -853,7 +875,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <section class="venue section reveal">
+    <section v-if="!announcement" class="venue section reveal">
       <p class="script">Địa điểm</p>
       <h2 style="line-height: 1.2;">{{ venue.name }}</h2>
       <p>{{ venue.address }}</p>
@@ -862,9 +884,12 @@ onBeforeUnmount(() => {
 
     <section id="rsvp" class="rsvp section">
       <div class="rsvp-copy reveal">
-        <p class="eyebrow">Xác nhận tham dự</p>
-        <h2>Gửi lời chúc và xác nhận tham dự</h2>
-        <p>
+        <p class="eyebrow">{{ announcement ? 'Lời chúc phúc' : 'Xác nhận tham dự' }}</p>
+        <h2>{{ announcement ? 'Gửi lời chúc đến cô dâu và chú rể' : 'Gửi lời chúc và xác nhận tham dự' }}</h2>
+        <p v-if="isParentsInvitation && announcement">Gia đình chúng tôi trân trọng đón nhận những lời chúc phúc của quý vị dành cho hai con. Kính mời quý vị để lại lời chúc và cùng chia sẻ niềm vui với gia đình.</p>
+        <p v-else-if="isParentsInvitation">Để gia đình chuẩn bị đón tiếp chu đáo, kính mong quý vị xác nhận số lượng người tham dự. Quý vị cũng có thể gửi lời chúc phúc đến hai con tại đây.</p>
+        <p v-else-if="announcement">Những lời chúc từ bạn là món quà ý nghĩa đối với chúng tôi trong ngày thành hôn. Bạn có thể gửi lời chúc tại đây để cùng chia sẻ niềm vui với chúng tôi.</p>
+        <p v-else>
           Bạn giúp chúng tôi chuẩn bị chu đáo hơn bằng cách xác nhận số lượng
           người tham dự trước ngày cưới.
         </p>
@@ -872,7 +897,7 @@ onBeforeUnmount(() => {
 
       <form class="rsvp-form reveal" @submit.prevent="submitRsvp">
         <label>
-          Tên của bạn
+          {{ isParentsInvitation ? 'Họ và tên quý vị' : 'Tên của bạn' }}
           <input v-model="form.guestName" type="text" required placeholder="">
         </label>
 
@@ -880,13 +905,14 @@ onBeforeUnmount(() => {
           Lời chúc
           <textarea
             v-model="form.wishMessage"
+            :required="announcement"
             rows="4"
             placeholder="Gửi một lời chúc nhỏ đến cô dâu chú rể"
           />
         </label>
 
-        <fieldset>
-          <legend>Bạn có tham dự tiệc không?</legend>
+        <fieldset v-if="!announcement">
+          <legend>{{ isParentsInvitation ? 'Quý vị có thể tham dự tiệc cưới không?' : 'Bạn có tham dự tiệc không?' }}</legend>
           <label class="radio-row">
             <input v-model="form.attendanceStatus" type="radio" value="attending">
             Có, tôi sẽ tham dự
@@ -897,7 +923,7 @@ onBeforeUnmount(() => {
           </label>
         </fieldset>
 
-        <label v-if="form.attendanceStatus === 'attending'">
+        <label v-if="!announcement && form.attendanceStatus === 'attending'">
           Số lượng người tham dự
           <input v-model.number="form.guestCount" type="number" min="1" max="20">
         </label>
@@ -915,7 +941,7 @@ onBeforeUnmount(() => {
 
     <section class="wishes section reveal">
       <p class="script">Lời chúc</p>
-      <h2>Thương gửi đến hai bạn</h2>
+      <h2>{{ isParentsInvitation ? 'Lời chúc dành cho hai con' : 'Thương gửi đến hai bạn' }}</h2>
       <div class="wish-list">
         <article v-for="wish in wishes" :key="wish.id">
           <p>{{ wish.message }}</p>
@@ -923,6 +949,20 @@ onBeforeUnmount(() => {
         </article>
       </div>
     </section>
+    <footer v-if="announcement" class="intro section reveal">
+      <p class="script">Lời cảm ơn</p>
+      <h2 style="line-height: 1.2;">Trân quý từng lời chúc phúc</h2>
+      <template v-if="isParentsInvitation">
+        <p>Gia đình chúng tôi chân thành cảm ơn quý vị đã dành tình cảm và gửi lời chúc phúc đến hai con. Sự quan tâm của quý vị là niềm động viên quý báu đối với hai con và gia đình trong ngày thành hôn.</p>
+        <p>Kính chúc quý vị cùng gia đình luôn mạnh khỏe, bình an và hạnh phúc.</p>
+        <p>Trân trọng,<br>{{ side === 'nha-gai' ? 'Gia đình nhà gái' : 'Gia đình nhà trai' }}</p>
+      </template>
+      <template v-else>
+        <p>Chân thành cảm ơn bạn đã dành tình cảm và gửi lời chúc phúc đến chúng tôi. Dù ở gần hay xa, sự quan tâm của bạn luôn góp phần làm nên niềm vui trọn vẹn trong ngày thành hôn.</p>
+        <p>Hẹn gặp bạn trong một dịp gần nhất để cùng chia sẻ những kỷ niệm của ngày vui.</p>
+        <p>Trân trọng,<br>Đình Dương &amp; Thu Hà</p>
+      </template>
+    </footer>
   </main>
 </template>
 
@@ -1251,12 +1291,36 @@ h2 {
   font-family: "Playfair Display", "Times New Roman", serif;
   font-size: clamp(2.2rem, 6vw, 4.8rem);
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.2;
   letter-spacing: 0;
 }
 
 p {
   line-height: 1.8;
+}
+
+.rsvp-copy,
+.story-copy,
+.section-heading {
+  min-width: 0;
+}
+
+.rsvp-copy h2,
+.story-copy h2,
+.section-heading h2,
+.wishes h2 {
+  line-height: 1.25;
+  text-wrap: pretty;
+}
+
+.rsvp-copy > h2 + p,
+.story-copy > h2 + p {
+  margin-top: 24px;
+}
+
+.rsvp-form > button[type="submit"] {
+  padding: 14px 24px;
+  line-height: 1.5;
 }
 
 .intro p:last-child,
@@ -1948,8 +2012,8 @@ button:disabled {
   }
 
   .section {
-    width: min(100% - 28px, 1120px);
-    padding: 32px 0;
+    width: min(100% - 48px, 1120px);
+    padding: 40px 0;
   }
 
   .intro {
@@ -1993,6 +2057,7 @@ button:disabled {
     padding-bottom: 56px;
   }
 
+
   .countdown-section {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     width: min(100% - 24px, 480px);
@@ -2003,7 +2068,18 @@ button:disabled {
   .story,
   .rsvp {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 32px;
+  }
+
+  .rsvp-form {
+    min-width: 0;
+    padding: 24px 20px;
+    gap: 22px;
+  }
+
+  .rsvp-copy > h2 + p,
+  .story-copy > h2 + p {
+    margin-top: 20px;
   }
 
   .wish-list article {

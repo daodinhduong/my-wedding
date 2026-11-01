@@ -11,6 +11,15 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const dirty = ref(false)
 const message = ref('')
 const error = ref('')
+const previewDialog = ref<HTMLDialogElement | null>(null)
+const previewImage = ref<GalleryImage | null>(null)
+
+async function openPreview(image: GalleryImage) {
+  previewImage.value = image
+  await nextTick()
+  previewDialog.value?.showModal()
+}
+
 onMounted(() => { void loadImages() })
 
 function headers() {
@@ -173,7 +182,9 @@ async function deleteImage(image: GalleryImage) {
               <span class="sr-only">STT của {{ image.key }}</span>
               <input type="number" :value="index + 1" :min="1" :max="images.length" :disabled="saving" :aria-label="`STT của ${image.key}`" @change="moveToPosition(index, $event)">
             </label>
-            <img :src="image.url" alt="" loading="lazy">
+            <button type="button" class="image-preview-button" :aria-label="`Phóng to ảnh ${image.key}`" @click="openPreview(image)">
+              <img :src="image.url" alt="" loading="lazy">
+            </button>
             <span class="image-name" :title="image.key">{{ image.key }}</span>
             <div class="actions">
               <button type="button" :disabled="index === 0 || saving" :aria-label="`Đưa ${image.key} lên`" @click="moveImage(index, -1)">↑</button>
@@ -189,6 +200,13 @@ async function deleteImage(image: GalleryImage) {
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <p v-if="message" role="status">{{ message }}</p>
     </div>
+    <dialog ref="previewDialog" class="image-preview-dialog" aria-label="Xem ảnh phóng to" @close="previewImage = null" @click="($event.target === previewDialog) && previewDialog?.close()">
+      <div v-if="previewImage" class="image-preview-content">
+        <button type="button" class="preview-close" aria-label="Đóng ảnh phóng to" autofocus @click="previewDialog?.close()">Đóng ×</button>
+        <img :src="previewImage.url" :alt="previewImage.key">
+        <p>{{ previewImage.key }}</p>
+      </div>
+    </dialog>
   </section>
 </template>
 
@@ -211,6 +229,15 @@ button:disabled { opacity: .62; cursor: not-allowed; }
 .position-field input { width: 100%; min-height: 44px; padding: 0 4px; text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .image-list img { width: 64px; height: 64px; object-fit: cover; }
+.image-preview-button { display: block; min-height: 0; padding: 0; background: transparent; cursor: zoom-in; }
+.image-preview-button img { display: block; }
+.image-preview-button:focus-visible { outline: 3px solid #8f4f42; outline-offset: 3px; }
+.image-preview-dialog { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 24px; box-sizing: border-box; border: 0; background: transparent; color: #fff; }
+.image-preview-dialog::backdrop { background: rgb(0 0 0 / .85); }
+.image-preview-content { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; width: fit-content; max-width: 100%; margin: auto; }
+.preview-close { align-self: flex-end; flex-shrink: 0; border-radius: 6px; }
+.image-preview-content img { display: block; max-width: 100%; max-height: calc(100dvh - 160px); object-fit: contain; }
+.image-preview-content p { margin: 0; overflow-wrap: anywhere; text-align: center; }
 .image-name { overflow-wrap: anywhere; }
 .hidden img, .hidden .image-name { opacity: .4; }
 .actions button { min-width: 44px; }
