@@ -1,0 +1,12 @@
+import { createError, defineEventHandler, getRouterParam } from 'h3'
+import { prisma } from '../../utils/db'
+
+export default defineEventHandler(async (event) => {
+  event.node.res.setHeader('Cache-Control', 'no-store')
+  const invitation = await prisma.invitation.findUnique({
+    where: { id: getRouterParam(event, 'id') || '' },
+    select: { guestName: true, senderName: true, invitationSide: true }
+  })
+  if (!invitation) throw createError({ statusCode: 404, statusMessage: 'Khong tim thay thiep moi.' })
+  return invitation
+})

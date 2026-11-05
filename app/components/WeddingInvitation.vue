@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { CalendarDays, Clock3, Hourglass, Heart } from 'lucide-vue-next'
 
-const props = defineProps<{ side: 'nha-trai' | 'nha-gai', announcement?: boolean }>()
+const props = defineProps<{ side: 'nha-trai' | 'nha-gai', announcement?: boolean, guestName?: string, senderName?: string, invitationId?: string }>()
 const route = useRoute()
 const isParentsInvitation = computed(() => route.query.inviter === 'parents')
-const guestAddress = computed(() => isParentsInvitation.value ? 'quý vị' : 'bạn')
+const guestAddress = computed(() => props.guestName || (isParentsInvitation.value ? 'quý vị' : 'bạn'))
 const introTitle = computed(() => isParentsInvitation.value
   ? (props.announcement ? 'Trân trọng báo tin thành hôn của hai con' : 'Kính mời quý vị đến chung vui cùng gia đình')
-  : (props.announcement ? 'Chúng tôi sắp về chung một nhà' : 'Gia đình và những người thương đến chung vui trong ngày thành hôn'))
+  : (props.announcement ? 'Chúng tôi sắp về chung một nhà' : 'Có bạn, niềm vui thêm trọn vẹn'))
 const venue = computed(() => props.side === 'nha-gai'
   ? {
-      name: 'Sunflower Palace',
-      address: '35A - 147A Văn Cao, Gia Viên, Hải Phòng',
-      mapUrl: 'https://maps.app.goo.gl/95WErfY85LFEvw1L8'
+      name: 'Khách sạn Sunflower',
+      address: '35A phố Văn Cao, Gia Viên, Ngô Quyền, Hải Phòng',
+      mapUrl: 'https://maps.app.goo.gl/Bs94Nto5M7RSk3Co9'
     }
   : {
       name: 'Phan Anh Palace',
@@ -22,7 +22,7 @@ const venue = computed(() => props.side === 'nha-gai'
 
 const countdownIcons = [CalendarDays, Clock3, Hourglass, Heart]
 const siteUrl = 'https://duonghawedding.io.vn/'
-const pageUrl = computed(() => `${siteUrl}${props.announcement ? 'bao-hy' : props.side}${isParentsInvitation.value ? '?inviter=parents' : ''}`)
+const pageUrl = computed(() => `${siteUrl}${props.announcement ? 'bao-hy' : props.side}${props.guestName && route.params.id ? `/${encodeURIComponent(String(route.params.id))}` : ''}${isParentsInvitation.value ? '?inviter=parents' : ''}`)
 const socialImageUrl = `${siteUrl}photos/og-wedding.png?v=3`
 const pageTitle = computed(() => props.announcement ? 'Báo hỷ Đình Dương & Thu Hà' : 'Thiệp cưới Đình Dương & Thu Hà')
 const weddingDate = computed(() => new Date(props.side === 'nha-gai'
@@ -142,11 +142,27 @@ function syncIntroScrollLock() {
 }
 
 const form = reactive<RsvpForm>({
-  guestName: '',
+  guestName: props.guestName || '',
   wishMessage: '',
   attendanceStatus: props.announcement ? 'not_attending' : 'attending',
   guestCount: props.announcement ? 0 : 2
 })
+
+const hasSavedResponse = ref(false)
+if (props.invitationId) {
+  const { data: saved, error } = await useFetch<{ response: RsvpForm | null }>(`/api/invitations/${encodeURIComponent(props.invitationId)}/response`)
+  if (error.value) {
+    throw createError({ statusCode: error.value.statusCode || 500, statusMessage: 'Không thể tải lời chúc đã gửi. Vui lòng thử lại.' })
+  }
+  if (saved.value?.response) {
+    const previous = saved.value.response
+    form.guestName = previous.guestName
+    form.wishMessage = previous.wishMessage || ''
+    form.attendanceStatus = previous.attendanceStatus === 'attending' ? 'attending' : 'not_attending'
+    form.guestCount = previous.guestCount
+    hasSavedResponse.value = true
+  }
+}
 
 const { data: galleryImages, status: galleryStatus, error: galleryError, refresh: refreshGallery } = await useFetch<string[]>('/api/gallery', {
   lazy: true,
@@ -197,6 +213,55 @@ function updateGalleryAspectRatio(event: Event) {
 
 const { data: wishes, refresh: refreshWishes } = await useFetch<Wish[]>('/api/wishes', {
   default: () => []
+})
+
+const wishList = ref<HTMLElement | null>(null)
+const wishesPerView = ref(3)
+const wishAutoplay = ref(true)
+const wishHovered = ref(false)
+let wishTimer: ReturnType<typeof window.setInterval> | undefined
+let wishInteractedAt = 0
+let wishViewportWidth = 0
+
+function wishStride() {
+  return wishList.value ? (wishList.value.clientWidth + 12) / wishesPerView.value : 0
+}
+
+function moveWish(direction: number, manual = true) {
+  if (!wishList.value) return
+  if (manual) wishInteractedAt = Date.now()
+  const last = Math.max(0, wishes.value.length - wishesPerView.value)
+  const current = Math.round(wishList.value.scrollLeft / wishStride())
+  const next = current + direction > last ? 0 : current + direction < 0 ? last : current + direction
+  wishList.value.scrollTo({ left: next * wishStride(), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
+}
+
+function resizeWishes() {
+  const perView = isMobileViewport() ? 1 : 3
+  const width = wishList.value?.clientWidth || 0
+  if (perView === wishesPerView.value && width === wishViewportWidth) return
+  wishesPerView.value = perView
+  wishViewportWidth = width
+  wishList.value?.scrollTo({ left: 0, behavior: 'instant' })
+}
+
+onMounted(() => {
+  resizeWishes()
+  wishAutoplay.value = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  window.addEventListener('resize', resizeWishes)
+  wishTimer = window.setInterval(() => {
+    const list = wishList.value
+    if (!list || !isIntroOpen.value || !wishAutoplay.value || wishHovered.value || document.hidden
+      || Date.now() - wishInteractedAt < 6000 || list.parentElement?.contains(document.activeElement)
+      || wishes.value.length <= wishesPerView.value) return
+    const bounds = list.getBoundingClientRect()
+    if (bounds.top < window.innerHeight && bounds.bottom > 0) moveWish(1, false)
+  }, 4500)
+})
+
+onBeforeUnmount(() => {
+  if (wishTimer) window.clearInterval(wishTimer)
+  window.removeEventListener('resize', resizeWishes)
 })
 
 const timeline = [
@@ -264,8 +329,10 @@ function animateCountdownDigit(unitIndex: number, digitIndex: number) {
 
 const submitLabel = computed(() => {
   if (isSubmittingRsvp.value) {
-    return 'Đang gửi...'
+    return hasSavedResponse.value ? 'Đang lưu...' : 'Đang gửi...'
   }
+
+  if (hasSavedResponse.value) return 'Sửa lời chúc'
 
   return !props.announcement && form.attendanceStatus === 'attending' ? 'Gửi xác nhận tham dự' : 'Gửi lời chúc'
 })
@@ -286,16 +353,22 @@ async function submitRsvp() {
         wishMessage: form.wishMessage,
         attendanceStatus: props.announcement ? 'not_attending' : form.attendanceStatus,
         guestCount: !props.announcement && form.attendanceStatus === 'attending' ? form.guestCount : 0,
-        invitationSide: props.side
+        invitationSide: props.side,
+        invitationId: props.invitationId
       }
     })
 
-    form.guestName = ''
-    form.wishMessage = ''
-    form.attendanceStatus = props.announcement ? 'not_attending' : 'attending'
-    form.guestCount = props.announcement ? 0 : 2
+    if (props.invitationId) {
+      hasSavedResponse.value = true
+    }
+    else {
+      form.guestName = ''
+      form.wishMessage = ''
+      form.attendanceStatus = props.announcement ? 'not_attending' : 'attending'
+      form.guestCount = props.announcement ? 0 : 2
+    }
     rsvpStatusTone.value = 'success'
-    rsvpStatusMessage.value = `Cảm ơn ${guestAddress.value}. Lời chúc sẽ hiển thị sau khi được duyệt.`
+    rsvpStatusMessage.value = `Cảm ơn ${guestAddress.value}!`
     await refreshWishes()
   }
   catch (error) {
@@ -720,18 +793,28 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <div class="hero-copy">
+      <div class="hero-copy" :class="{ 'hero-copy--personal': guestName }">
         <h1>
           <span class="hero-script">{{ announcement ? 'Báo hỷ' : 'Wedding' }}</span>
           <span class="hero-names">Đình Dương<br>Thu Hà</span>
         </h1>
         <p class="hero-date">{{ announcement ? weddingDateText : weddingDateTimeText }}</p>
-        <a class="hero-action" :href="announcement ? '#announcement' : '#rsvp'">{{ announcement ? (isParentsInvitation ? 'Trân trọng báo hỷ' : 'Thương gửi tin vui') : 'Xác nhận tham dự' }}</a>
+        <div v-if="guestName" class="recipient-invitation">
+          <div class="recipient-divider" aria-hidden="true"><span /><div class="recipient-hearts"><Heart /><Heart /></div><span /></div>
+          <div class="recipient-plaque">
+            <svg class="recipient-frame" viewBox="0 0 400 90" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M38 1 H362 Q377 1 379 17 C405 24 405 66 379 73 Q377 89 362 89 H38 Q23 89 21 73 C-5 66 -5 24 21 17 Q23 1 38 1 Z" />
+            </svg>
+            <p class="recipient-label">Trân trọng kính mời</p>
+            <p class="recipient-name">{{ guestName }}</p>
+          </div>
+        </div>
+        <a v-if="announcement" class="hero-action" href="#announcement">{{ isParentsInvitation ? 'Trân trọng báo hỷ' : 'Thương gửi tin vui' }}</a>
       </div>
     </section>
 
     <section :id="announcement ? 'announcement' : undefined" class="intro section reveal">
-      <p class="script">{{ announcement ? (isParentsInvitation ? 'Trân trọng báo hỷ' : 'Thương gửi tin vui') : 'Trân trọng kính mời' }}</p>
+      <p class="script">{{ guestName ? 'Ngày chung đôi' : announcement ? (isParentsInvitation ? 'Trân trọng báo hỷ' : 'Thương gửi tin vui') : 'Trân trọng kính mời' }}</p>
       <h2 style="line-height: 1.2;">{{ introTitle }}</h2>
       <template v-if="isParentsInvitation">
         <p>Gia đình chúng tôi {{ announcement ? 'trân trọng báo tin lễ thành hôn của hai con' : 'trân trọng kính mời quý vị đến dự lễ thành hôn của hai con' }}<br><strong>Đình Dương &amp; Thu Hà</strong><br>{{ announcement ? 'sẽ được tổ chức vào ngày' : 'được tổ chức vào' }} {{ announcement ? weddingDateText : weddingDateTimeText }}.</p>
@@ -743,8 +826,8 @@ onBeforeUnmount(() => {
         <p>Chúng tôi xin gửi tin vui này đến gia đình, người thân và bạn bè gần xa. Dù chưa thể gặp nhau trong ngày cưới, chúng tôi luôn trân quý tình cảm và những lời chúc phúc của bạn.</p>
       </template>
       <p v-else>
-        Sự hiện diện của bạn là món quà dịu dàng nhất dành cho chúng tôi trong
-        hành trình bắt đầu một chương mới.
+        Chúng mình sắp bắt đầu một chặng đường mới, cùng nhau xây dựng một mái ấm nhỏ.
+        Mong được gặp bạn trong ngày cưới, cùng trò chuyện, nâng ly và lưu lại những kỷ niệm thật đẹp.
       </p>
     </section>
 
@@ -898,7 +981,7 @@ onBeforeUnmount(() => {
       <form class="rsvp-form reveal" @submit.prevent="submitRsvp">
         <label>
           {{ isParentsInvitation ? 'Họ và tên quý vị' : 'Tên của bạn' }}
-          <input v-model="form.guestName" type="text" required placeholder="">
+          <input v-model="form.guestName" type="text" maxlength="50" required placeholder="">
         </label>
 
         <label>
@@ -906,6 +989,7 @@ onBeforeUnmount(() => {
           <textarea
             v-model="form.wishMessage"
             :required="announcement"
+            maxlength="200"
             rows="4"
             placeholder="Gửi một lời chúc nhỏ đến cô dâu chú rể"
           />
@@ -942,8 +1026,23 @@ onBeforeUnmount(() => {
     <section class="wishes section reveal">
       <p class="script">Lời chúc</p>
       <h2>{{ isParentsInvitation ? 'Lời chúc dành cho hai con' : 'Thương gửi đến hai bạn' }}</h2>
-      <div class="wish-list">
-        <article v-for="wish in wishes" :key="wish.id">
+      <div
+        ref="wishList"
+        class="wish-list"
+        role="region"
+        aria-roledescription="carousel"
+        aria-label="Lời chúc của khách mời"
+        tabindex="0"
+        @pointerenter="wishHovered = $event.pointerType === 'mouse'"
+        @pointerleave="wishHovered = false"
+        @pointerdown="wishInteractedAt = Date.now()"
+        @touchend="wishInteractedAt = Date.now()"
+        @wheel.passive="wishInteractedAt = Date.now()"
+        @keydown.left.prevent="moveWish(-1)"
+        @keydown.right.prevent="moveWish(1)"
+      >
+        <article v-for="(wish, index) in wishes" :key="wish.id" role="group" aria-roledescription="slide" :aria-label="`${index + 1} / ${wishes.length}`">
+          <div class="wish-quote" aria-hidden="true"><span />“<span /></div>
           <p>{{ wish.message }}</p>
           <strong>{{ wish.name }}</strong>
         </article>
@@ -968,6 +1067,31 @@ onBeforeUnmount(() => {
 
 <style scoped>
 @import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&family=Cormorant+Upright:wght@500;600;700&family=Great+Vibes&family=Playfair+Display:wght@500;600;700&display=swap&subset=vietnamese");
+
+.recipient-invitation {
+  --recipient-gold: #e8d5b6;
+  width: min(100%, 470px);
+  margin: 0;
+  padding-inline: 10px;
+  box-sizing: border-box;
+  text-align: center;
+}
+.recipient-divider { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 14px; color: #f4e5c9; }
+.recipient-divider > span { width: 52px; height: 1px; background: currentColor; }
+.recipient-hearts { position: relative; width: 34px; height: 26px; }
+.recipient-hearts svg { position: absolute; top: 2px; width: 23px; height: 23px; stroke-width: 1.4; fill: none; }
+.recipient-hearts svg:first-child { left: 0; transform: rotate(-14deg); }
+.recipient-hearts svg:last-child { right: 0; transform: rotate(14deg); }
+.recipient-plaque { position: relative; display: grid; align-content: center; gap: 8px; min-height: 90px; padding: 16px 26px; isolation: isolate; }
+.recipient-frame { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; overflow: visible; fill: rgb(26 20 15 / .28); stroke: var(--recipient-gold); stroke-width: 1.4; pointer-events: none; }
+.recipient-frame path { vector-effect: non-scaling-stroke; }
+.recipient-label { margin: 0; font-family: "Be Vietnam Pro", sans-serif; font-size: clamp(.56rem, 1.3vw, .68rem); font-weight: 600; line-height: 1.6; letter-spacing: .32em; text-transform: uppercase; color: #fff4e1; }
+.recipient-name { margin: 0; font-family: "Cormorant Garamond", "Times New Roman", serif; font-size: clamp(1.45rem, 3vw, 2rem); font-style: italic; font-weight: 600; line-height: 1.18; color: #fffaf0; overflow-wrap: anywhere; text-shadow: 0 2px 8px rgb(0 0 0 / .35); }
+@media (max-width: 600px) {
+  .recipient-invitation { width: min(100%, 470px); padding-inline: 10px; }
+  .recipient-plaque { min-height: 80px; padding: 14px 18px; }
+  .recipient-label { letter-spacing: .25em; }
+}
 
 :global(*) {
   box-sizing: border-box;
@@ -1213,6 +1337,24 @@ onBeforeUnmount(() => {
   width: min(100%, 980px);
   margin: 0 auto 46px;
   color: #fffaf1;
+}
+
+.hero-copy--personal h1,
+.hero-copy--personal .hero-date {
+  width: min(100%, 470px);
+  text-align: center;
+}
+
+.hero-copy--personal .hero-date {
+  margin: 28px 0 24px;
+}
+
+.hero-copy--personal .recipient-divider {
+  margin-bottom: 18px;
+}
+
+.hero-copy--personal .hero-action {
+  margin-top: 24px;
 }
 
 .eyebrow {
@@ -1567,7 +1709,7 @@ p {
   gap: 10px;
   overflow-x: auto;
   padding: 2px 2px 10px;
-  scrollbar-width: thin;
+  scrollbar-width: none;
 }
 
 .gallery-thumb {
@@ -1793,27 +1935,77 @@ button:disabled {
   scroll-snap-type: x mandatory;
   scrollbar-width: thin;
   margin-top: 32px;
-  padding: 2px 2px 14px;
+  padding: 0;
   -webkit-overflow-scrolling: touch;
 }
 
 .wish-list article {
-  flex: 0 0 clamp(280px, calc((100% - 24px) / 3), 372px);
+  flex: 0 0 calc((100% - 24px) / 3);
+  min-width: 0;
   display: grid;
-  align-content: space-between;
-  min-height: 210px;
-  padding: 24px;
-  background: #efe4dc;
+  grid-template-rows: auto 1fr auto;
+  min-height: 240px;
+  padding: 24px 26px 28px;
+  border: 1px solid #d5b39e;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #fcf7f2, #f4e9e0);
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / .8);
   scroll-snap-align: start;
   text-align: left;
+  overflow-wrap: anywhere;
 }
 
+.wish-list::-webkit-scrollbar { display: none; }
+.wish-list:focus-visible { outline: 2px solid #9f5f50; outline-offset: 4px; }
+
 .wish-list p {
-  margin: 0 0 20px;
+  margin: 0 0 24px;
+  color: #392e25;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-size: 1.4rem;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: pre-line;
 }
 
 .wish-list strong {
-  color: #9f5f50;
+  display: block;
+  color: #a55d47;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.wish-list strong::before {
+  display: block;
+  width: 44%;
+  height: 1px;
+  margin-bottom: 16px;
+  background: #d5b39e;
+  content: "";
+}
+
+.wish-quote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 40px;
+  margin-bottom: 20px;
+  color: #b88e74;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-size: 5rem;
+  line-height: 1;
+  padding-top: 24px;
+}
+
+.wish-quote span {
+  width: 22%;
+  height: 1px;
+  margin-top: -24px;
+  background: currentColor;
 }
 
 .reveal {
@@ -1930,7 +2122,7 @@ button:disabled {
     min-height: 100svh;
     min-height: 100dvh;
     min-height: var(--app-height, 100dvh);
-    padding: 20px;
+    padding: 32px 24px calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
   .invitation-intro {
@@ -1995,25 +2187,75 @@ button:disabled {
   }
 
   .hero-copy {
-    margin-bottom: 28px;
+    margin-bottom: 0;
+  }
+
+  .hero-copy--personal h1,
+  .hero-copy--personal .hero-date {
+    width: min(100%, 420px);
   }
 
   .hero h1 {
-    gap: 18px;
+    gap: 16px;
+  }
+
+  .hero-script {
+    font-size: clamp(4.2rem, 17vw, 5rem);
+    line-height: .9;
   }
 
   .hero-names {
-    font-size: clamp(2.5rem, 13vw, 4.5rem);
-    line-height: 1;
+    font-size: clamp(2.5rem, 11vw, 3.25rem);
+    line-height: 1.04;
   }
 
   .hero-date {
-    margin: 28px 0 32px;
+    margin: 22px 0 24px;
+    font-size: clamp(.9rem, 3.5vw, 1.05rem);
+    line-height: 1.5;
+  }
+
+  .hero-copy--personal .hero-date {
+    margin: 24px 0 20px;
+  }
+
+  .recipient-invitation {
+    width: min(100%, 420px);
+    margin: 0;
+    padding-inline: 0;
+  }
+
+  .recipient-divider {
+    margin-bottom: 16px;
+  }
+
+  .recipient-plaque {
+    min-height: 84px;
+    padding: 14px 18px;
+  }
+
+  .recipient-name {
+    font-size: clamp(1.4rem, 5.8vw, 1.75rem);
+    line-height: 1.25;
+  }
+
+  .hero-action {
+    min-height: 48px;
+    padding: 0 22px;
+    font-size: .9rem;
   }
 
   .section {
     width: min(100% - 48px, 1120px);
     padding: 40px 0;
+  }
+
+  .timeline {
+    padding-block: 16px;
+  }
+
+  .timeline + .gallery {
+    padding-top: 24px;
   }
 
   .intro {
@@ -2051,9 +2293,11 @@ button:disabled {
 
   .rsvp {
     padding-top: 40px;
+    padding-bottom: 16px;
   }
 
   .wishes {
+    padding-top: 16px;
     padding-bottom: 56px;
   }
 
@@ -2083,7 +2327,7 @@ button:disabled {
   }
 
   .wish-list article {
-    flex-basis: min(84vw, 340px);
+    flex-basis: 100%;
   }
 
   .gallery-frame {

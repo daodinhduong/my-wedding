@@ -21,7 +21,7 @@ type CreateResponseForm = {
 
 const password = ref('')
 const authenticatedPassword = ref('')
-const activeTab = ref<'responses' | 'gallery'>('responses')
+const activeTab = ref<'responses' | 'gallery' | 'invitations'>('responses')
 const isUnlocked = ref(false)
 const isLoading = ref(false)
 const isCreateDialogOpen = ref(false)
@@ -331,9 +331,13 @@ function formatCreatedAt(value: string) {
       <div class="admin-tabs" role="tablist" aria-label="Quản lý">
         <button type="button" role="tab" :aria-selected="activeTab === 'responses'" :class="{ active: activeTab === 'responses' }" @click="activeTab = 'responses'">Phản hồi</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'gallery'" :class="{ active: activeTab === 'gallery' }" @click="activeTab = 'gallery'">Album ảnh</button>
+        <button type="button" role="tab" :aria-selected="activeTab === 'invitations'" :class="{ active: activeTab === 'invitations' }" @click="activeTab = 'invitations'">Thiệp mời</button>
       </div>
       <KeepAlive>
         <AdminGallery v-if="activeTab === 'gallery'" :admin-password="authenticatedPassword" />
+      </KeepAlive>
+      <KeepAlive>
+        <AdminInvitations v-if="activeTab === 'invitations'" :admin-password="authenticatedPassword" />
       </KeepAlive>
       <div v-if="activeTab === 'responses'" class="responses-panel" role="tabpanel">
       <header class="admin-header">

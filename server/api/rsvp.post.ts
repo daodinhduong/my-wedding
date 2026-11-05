@@ -10,12 +10,22 @@ type RsvpBody = {
   attendanceStatus?: unknown
   guestCount?: unknown
   invitationSide?: unknown
+  invitationId?: unknown
 }
 
 const attendanceStatuses: AttendanceStatus[] = ['attending', 'not_attending']
 
 export default defineEventHandler(async (event) => {
   const body = await readJsonBody<RsvpBody>(event)
+  if (!body || typeof body !== 'object') throw createError({ statusCode: 400, statusMessage: 'Du lieu khong hop le.' })
+  const hasInvitationId = body.invitationId !== undefined && body.invitationId !== null
+  if (hasInvitationId && (typeof body.invitationId !== 'string' || !body.invitationId.trim())) {
+    throw createError({ statusCode: 400, statusMessage: 'ID thiep moi khong hop le.' })
+  }
+  const invitationId = hasInvitationId ? (body.invitationId as string).trim() : null
+  if (invitationId && !await prisma.invitation.findUnique({ where: { id: invitationId }, select: { id: true } })) {
+    throw createError({ statusCode: 404, statusMessage: 'Khong tim thay thiep moi.' })
+  }
   const guestName = typeof body.guestName === 'string' ? body.guestName.trim() : ''
   const wishMessage = typeof body.wishMessage === 'string' ? body.wishMessage.trim() : ''
   const attendanceStatus = attendanceStatuses.includes(body.attendanceStatus as AttendanceStatus)
@@ -27,6 +37,14 @@ export default defineEventHandler(async (event) => {
 
   if (!guestName) {
     throw createError({ statusCode: 400, statusMessage: 'Vui long nhap ten cua ban.' })
+  }
+
+  if (guestName.length > 50) {
+    throw createError({ statusCode: 400, statusMessage: 'Ten toi da 50 ky tu.' })
+  }
+
+  if (wishMessage.length > 200) {
+    throw createError({ statusCode: 400, statusMessage: 'Loi chuc toi da 200 ky tu.' })
   }
 
   if (!attendanceStatus) {
@@ -44,23 +62,28 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const response = await prisma.weddingResponse.create({
-    data: {
+  const data = {
       guestName,
       wishMessage: wishMessage || null,
       attendanceStatus,
       guestCount,
-      isApproved: false,
+      isApproved: !!invitationId,
       responseSource: 'website',
       invitationSide
-    },
-    select: { id: true }
-  })
+    }
+  const response = invitationId
+    ? await prisma.weddingResponse.upsert({
+        where: { invitationId },
+        create: { ...data, invitationId },
+        update: data,
+        select: { id: true }
+      })
+    : await prisma.weddingResponse.create({ data, select: { id: true } })
 
   return {
     ok: true,
     id: response.id.toString(),
-    isApproved: false,
-    message: 'Cam on ban. Loi chuc se hien thi sau khi duoc duyet.'
+    isApproved: !!invitationId,
+    message: invitationId ? 'Da luu loi chuc.' : 'Cam on ban. Loi chuc se hien thi sau khi duoc duyet.'
   }
 })

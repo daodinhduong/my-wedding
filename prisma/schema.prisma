@@ -20,6 +20,8 @@ model WeddingResponse {
   note             String?
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  invitationId     String?  @unique @map("invitation_id")
+  invitation       Invitation? @relation(fields: [invitationId], references: [id], onDelete: SetNull)
 
   @@index([createdAt(sort: Desc)], map: "wedding_responses_created_at_idx")
   @@index([attendanceStatus], map: "wedding_responses_attendance_status_idx")
@@ -35,4 +37,20 @@ model GalleryImage {
   isVisible Boolean @default(true) @map("is_visible")
 
   @@map("gallery_images")
+}
+
+model Invitation {
+  id             String   @id @default(uuid())
+  senderName     String   @map("sender_name")
+  guestName      String   @map("guest_name")
+  note           String?
+  isSent         Boolean  @default(false) @map("is_sent")
+  deliveryType   String   @default("online") @map("delivery_type")
+  invitationSide String   @default("nha-trai") @map("invitation_side")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  response       WeddingResponse?
+
+  @@index([createdAt(sort: Desc)])
+  @@map("invitations")
 }
