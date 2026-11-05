@@ -809,7 +809,6 @@ onBeforeUnmount(() => {
             <p class="recipient-name">{{ guestName }}</p>
           </div>
         </div>
-        <a v-if="announcement" class="hero-action" href="#announcement">{{ isParentsInvitation ? 'Trân trọng báo hỷ' : 'Thương gửi tin vui' }}</a>
       </div>
     </section>
 
@@ -856,7 +855,7 @@ onBeforeUnmount(() => {
     <section class="story section">
       <div class="story-media reveal">
         <img
-          src="https://pub-3395f4cf2cdf4d4f8c9fe93858d7da4a.r2.dev/TSU_8269.jpg.webp"
+          src="https://pub-3395f4cf2cdf4d4f8c9fe93858d7da4a.r2.dev/FTW09694.jpg.webp"
           alt="Đình Dương và Thu Hà cùng nhau trong ngày chụp cưới"
         >
       </div>
@@ -1353,10 +1352,6 @@ onBeforeUnmount(() => {
   margin-bottom: 18px;
 }
 
-.hero-copy--personal .hero-action {
-  margin-top: 24px;
-}
-
 .eyebrow {
   margin: 0 0 clamp(16px, 2vw, 24px);
   font-size: 0.78rem;
@@ -1397,7 +1392,6 @@ onBeforeUnmount(() => {
   font-weight: 500;
 }
 
-.hero-action,
 .venue a {
   display: inline-flex;
   align-items: center;
@@ -2237,12 +2231,6 @@ button:disabled {
   .recipient-name {
     font-size: clamp(1.4rem, 5.8vw, 1.75rem);
     line-height: 1.25;
-  }
-
-  .hero-action {
-    min-height: 48px;
-    padding: 0 22px;
-    font-size: .9rem;
   }
 
   .section {
