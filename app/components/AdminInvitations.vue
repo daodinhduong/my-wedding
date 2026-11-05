@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Copy, Pencil, Trash2 } from 'lucide-vue-next'
+
 type Invitation = {
   id: string
   senderName: string
@@ -22,6 +24,7 @@ const statusFilter = ref('all')
 const sideFilter = ref<Invitation['invitationSide']>('nha-trai')
 const dialog = ref<HTMLDialogElement>()
 const editingId = ref('')
+const isSentLocked = ref(false)
 const form = reactive({ senderName: '', guestName: '', note: '', isSent: false, deliveryType: 'online' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
 const deliveryLabels = { online: 'Thiệp online', paper: 'Thiệp giấy', both: 'Online và giấy' }
 const sentCount = computed(() => invitations.value.filter(item => item.isSent).length)
@@ -46,6 +49,7 @@ async function load() {
 onMounted(load)
 function openForm(item?: Invitation) {
   editingId.value = item?.id || ''
+  isSentLocked.value = item?.isSent === true
   Object.assign(form, { senderName: item?.senderName || '', guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'online', invitationSide: item?.invitationSide || 'nha-trai' })
   formError.value = ''
   dialog.value?.showModal()
@@ -67,11 +71,11 @@ async function save() {
   finally { saving.value = false }
 }
 async function toggleSent(item: Invitation) {
-  if (busyId.value) return
+  if (busyId.value || item.isSent) return
   busyId.value = item.id
   error.value = ''
   try {
-    const updated = await $fetch<Invitation>(`/api/admin/invitations/${item.id}`, { method: 'PATCH', headers: headers(), body: { ...item, note: item.note || '', isSent: !item.isSent } })
+    const updated = await $fetch<Invitation>(`/api/admin/invitations/${item.id}`, { method: 'PATCH', headers: headers(), body: { ...item, note: item.note || '', isSent: true } })
     Object.assign(item, updated)
   }
   catch (cause) { error.value = errorText(cause) }
@@ -130,12 +134,12 @@ async function copyLink(item: Invitation) {
               <td class="note">{{ item.note || '—' }}</td>
               <td>{{ item.invitationSide === 'nha-trai' ? 'Nhà trai' : 'Nhà gái' }}</td>
               <td>{{ deliveryLabels[item.deliveryType] }}</td>
-              <td><button type="button" class="sent-button" :class="{ sent: item.isSent }" :aria-pressed="item.isSent" :disabled="!!busyId" @click="toggleSent(item)">{{ busyId === item.id ? 'Đang lưu...' : item.isSent ? 'Đã gửi ✓' : 'Chưa gửi' }}</button></td>
+              <td><button type="button" class="sent-button" :class="{ sent: item.isSent }" :aria-pressed="item.isSent" :disabled="!!busyId || item.isSent" :title="item.isSent ? 'Thiệp đã gửi, không thể chuyển về chưa gửi' : 'Đánh dấu đã gửi'" @click="toggleSent(item)">{{ busyId === item.id ? 'Đang lưu...' : item.isSent ? 'Đã gửi ✓' : 'Chưa gửi' }}</button></td>
               <td><div class="row-actions">
                 <a :href="`/${item.invitationSide}/${item.id}`" target="_blank" rel="noopener">Mở thiệp ↗</a>
-                <button type="button" class="secondary" @click="copyLink(item)">Sao chép link</button>
-                <button type="button" :disabled="!!busyId" @click="openForm(item)">Sửa</button>
-                <button type="button" class="danger" :disabled="!!busyId" @click="remove(item)">Xóa</button>
+                <button type="button" class="secondary icon-action" aria-label="Sao chép link" title="Sao chép link" @click="copyLink(item)"><Copy :size="18" aria-hidden="true" /></button>
+                <button type="button" class="icon-action" aria-label="Sửa thiệp mời" title="Sửa thiệp mời" :disabled="!!busyId" @click="openForm(item)"><Pencil :size="18" aria-hidden="true" /></button>
+                <button type="button" class="danger icon-action" aria-label="Xóa thiệp mời" title="Xóa thiệp mời" :disabled="!!busyId" @click="remove(item)"><Trash2 :size="18" aria-hidden="true" /></button>
               </div></td>
             </tr>
           </template>
@@ -151,7 +155,7 @@ async function copyLink(item: Invitation) {
           <label>Bên mời<select v-model="form.invitationSide"><option value="nha-trai">Nhà trai</option><option value="nha-gai">Nhà gái</option></select></label>
           <label>Hình thức gửi<select v-model="form.deliveryType"><option value="online">Thiệp online</option><option value="paper">Thiệp giấy</option><option value="both">Online và giấy</option></select></label>
         </div>
-        <label>Trạng thái<select v-model="form.isSent"><option :value="false">Chưa gửi</option><option :value="true">Đã gửi</option></select></label>
+        <label>Trạng thái<select v-model="form.isSent" :disabled="isSentLocked"><option :value="false">Chưa gửi</option><option :value="true">Đã gửi</option></select></label>
         <label>Ghi chú nội bộ<textarea v-model="form.note" rows="3" maxlength="2000" placeholder="Không hiển thị trên thiệp" /></label>
         <p v-if="formError" class="error" role="alert">{{ formError }}</p>
         <div class="actions"><button type="button" class="secondary" :disabled="saving" @click="dialog?.close()">Hủy</button><button type="submit" :disabled="saving">{{ saving ? 'Đang lưu...' : editingId ? 'Lưu thay đổi' : 'Tạo thiệp' }}</button></div>
@@ -177,15 +181,19 @@ button, .row-actions a { display: inline-flex; align-items: center; justify-cont
 button:disabled { opacity: .6; cursor: not-allowed; }
 .secondary, .sent-button { background: #efe4db; color: #6f3d34; }
 .sent-button.sent { background: #e6efdf; color: #42643b; }
+.sent-button.sent:disabled { opacity: 1; cursor: default; }
 .danger { background: #9f3f34; }
 .table-wrap { overflow-x: auto; border: 1px solid #e2d4c9; }
-table { width: 100%; min-width: 1100px; border-collapse: collapse; }
+table { width: 100%; min-width: 960px; border-collapse: collapse; }
 th, td { padding: 14px; text-align: left; vertical-align: top; border-bottom: 1px solid #eadfd7; }
 th { background: #f1e8df; color: #5a514c; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; }
 td { overflow-wrap: anywhere; }
 .note { white-space: pre-wrap; max-width: 240px; }
-.row-actions { display: flex; flex-wrap: wrap; gap: 8px; min-width: 230px; }
+.row-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; }
 .row-actions button, .row-actions a { font-size: .82rem; }
+.row-actions a { white-space: nowrap; }
+.row-actions .icon-action { flex: 0 0 44px; width: 44px; padding: 0; }
+.row-actions button:focus-visible, .row-actions a:focus-visible { outline: 2px solid #8f4f42; outline-offset: 3px; }
 .empty { text-align: center; padding: 36px 16px; color: #786a60; }
 .error { color: #9f3f34; font-weight: 700; }
 dialog { width: min(560px, calc(100% - 32px)); max-height: calc(100dvh - 40px); box-sizing: border-box; padding: 24px; border: 1px solid #e2d4c9; background: #fffdf9; color: #2d2926; overflow-y: auto; }

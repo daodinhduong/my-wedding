@@ -2116,7 +2116,8 @@ button:disabled {
     min-height: 100svh;
     min-height: 100dvh;
     min-height: var(--app-height, 100dvh);
-    padding: 32px 24px calc(92px + env(safe-area-inset-bottom, 0px));
+    align-items: center;
+    padding: calc(32px + env(safe-area-inset-top, 0px)) 24px calc(32px + env(safe-area-inset-bottom, 0px));
   }
 
   .invitation-intro {
@@ -2181,12 +2182,14 @@ button:disabled {
   }
 
   .hero-copy {
+    width: min(100%, 420px);
     margin-bottom: 0;
+    text-align: center;
   }
 
   .hero-copy--personal h1,
   .hero-copy--personal .hero-date {
-    width: min(100%, 420px);
+    width: 100%;
   }
 
   .hero h1 {

@@ -10,10 +10,16 @@ export default defineEventHandler(async (event) => {
   const body = await readJsonBody<Record<string, unknown>>(event)
   const data = validateInvitation(body || {})
   try {
-    return await prisma.invitation.update({ where: { id }, data })
+    return await prisma.invitation.update({
+      where: { id, ...(!data.isSent ? { isSent: false } : {}) },
+      data
+    })
   }
   catch (error) {
     if ((error as { code?: string }).code === 'P2025') {
+      if (!data.isSent && await prisma.invitation.findUnique({ where: { id }, select: { id: true } })) {
+        throw createError({ statusCode: 409, statusMessage: 'Thiep da gui, khong the chuyen ve chua gui.' })
+      }
       throw createError({ statusCode: 404, statusMessage: 'Khong tim thay thiep moi.' })
     }
     throw error

@@ -615,12 +615,12 @@ function formatCreatedAt(value: string) {
 
 .admin-page {
   min-height: 100vh;
-  padding: clamp(18px, 4vw, 42px);
+  padding: clamp(16px, 2vw, 28px);
 }
 
 .login-panel,
 .admin-shell {
-  width: min(100%, 1120px);
+  width: 100%;
   margin: 0 auto;
 }
 

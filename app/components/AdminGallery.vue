@@ -212,7 +212,7 @@ async function deleteImage(image: GalleryImage) {
 
 <style scoped>
 .gallery-page { color: #2d2926; font-family: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif; }
-.gallery-container { width: min(100%, 1120px); margin: auto; }
+.gallery-container { width: 100%; margin: auto; }
 a { color: #6f3d34; font-weight: 700; }
 header { margin: 28px 0; }
 .eyebrow { margin: 0 0 8px; color: #8f4f42; font-size: .78rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
