@@ -54,7 +54,7 @@ function openForm(item?: Invitation) {
   form.personalMessage = item?.personalMessage || ''
   hasPersonalMessage.value = !!form.personalMessage.trim()
   isSentLocked.value = item?.isSent === true
-  Object.assign(form, { inviterRole: item?.inviterRole || 'couple', guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || 'nha-trai' })
+  Object.assign(form, { inviterRole: item?.inviterRole || 'couple', guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || sideFilter.value })
   formError.value = ''
   dialog.value?.showModal()
 }
@@ -68,6 +68,9 @@ async function save() {
     })
     if (editingId.value) invitations.value = invitations.value.map(old => old.id === item.id ? item : old)
     else invitations.value.unshift(item)
+    sideFilter.value = item.invitationSide
+    statusFilter.value = 'all'
+    search.value = ''
     dialog.value?.close()
     message.value = 'Đã lưu thiệp mời. Bạn có thể mở hoặc sao chép link để gửi cho khách.'
   }

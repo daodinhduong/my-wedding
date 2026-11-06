@@ -24,9 +24,7 @@ const venue = computed(() => props.side === 'nha-gai'
 const countdownIcons = [CalendarDays, Clock3, Hourglass, Heart]
 const siteUrl = 'https://duonghawedding.io.vn/'
 const pageUrl = computed(() => `${siteUrl}${props.invitationId ? encodeURIComponent(props.invitationId) : ''}`)
-const socialImageUrl = computed(() => props.announcement
-  ? 'https://pub-3395f4cf2cdf4d4f8c9fe93858d7da4a.r2.dev/FTW09694.jpg.webp'
-  : `${siteUrl}photos/${props.side === 'nha-gai' ? 'og-wedding-nha-gai.png' : 'og-wedding.png'}?v=4`)
+const socialImageUrl = computed(() => `${siteUrl}photos/${isBrideCeremony.value ? 'og-wedding-nha-gai.png' : 'og-wedding.png'}?v=5`)
 const pageTitle = computed(() => props.announcement ? `Trân trọng báo tin đến ${guestAddress.value}` : `Trân trọng kính mời ${guestAddress.value}`)
 const weddingDate = computed(() => new Date(isBrideCeremony.value
   ? '2026-11-28T10:00:00+07:00'
@@ -57,9 +55,9 @@ useSeoMeta({
   ogLocale: 'vi_VN',
   ogImage: () => socialImageUrl.value,
   ogImageAlt: () => socialImageAlt.value,
-  ogImageType: () => props.announcement ? 'image/webp' : 'image/png',
-  ogImageWidth: () => props.announcement ? 1280 : 1200,
-  ogImageHeight: () => props.announcement ? 1920 : 630,
+  ogImageType: 'image/png',
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
   twitterCard: 'summary_large_image',
   twitterTitle: pageTitle,
   twitterDescription: () => pageDescription.value,
@@ -250,6 +248,10 @@ function resizeWishes() {
   wishViewportWidth = width
   wishList.value?.scrollTo({ left: 0, behavior: 'instant' })
 }
+
+watch(wishList, (list) => {
+  if (list) resizeWishes()
+}, { flush: 'post' })
 
 onMounted(() => {
   resizeWishes()
@@ -749,7 +751,7 @@ onBeforeUnmount(() => {
       >
         <span class="invitation-card__inside">
           <span class="invitation-card__ornament" aria-hidden="true" />
-          <span class="invitation-card__script">{{ announcement ? 'Trân trọng báo hỷ' : 'Wedding invitation' }}</span>
+          <span class="invitation-card__script">Wedding invitation</span>
           <span class="invitation-card__names">Đình Dương<br>Thu Hà</span>
           <span class="invitation-card__date">{{ weddingDateText }}</span>
           <span class="invitation-card__hint">Chạm để mở thiệp</span>
@@ -982,7 +984,7 @@ onBeforeUnmount(() => {
     <section v-if="invitationId" id="rsvp" class="rsvp section">
       <div class="rsvp-copy reveal">
         <p class="eyebrow">{{ announcement ? 'Lời chúc phúc' : 'Xác nhận tham dự' }}</p>
-        <h2>{{ announcement ? 'Gửi lời chúc đến hai bạn' : 'Gửi lời chúc và xác nhận tham dự' }}</h2>
+        <h2>{{ announcement ? (isParentsInvitation ? 'Gửi lời chúc đến hai con' : 'Gửi lời chúc đến hai bạn') : 'Gửi lời chúc và xác nhận tham dự' }}</h2>
         <p v-if="isParentsInvitation && announcement">Gia đình chúng tôi trân trọng đón nhận những lời chúc phúc của quý vị dành cho hai con. Kính mời quý vị để lại lời chúc và cùng chia sẻ niềm vui với gia đình.</p>
         <p v-else-if="isParentsInvitation">Để gia đình chuẩn bị đón tiếp chu đáo, kính mong quý vị xác nhận số lượng người tham dự. Quý vị cũng có thể gửi lời chúc phúc đến hai con tại đây.</p>
         <p v-else-if="announcement">Những lời chúc từ bạn là món quà ý nghĩa đối với chúng tôi trong ngày lễ {{ ceremony }}. Bạn có thể gửi lời chúc tại đây để cùng chia sẻ niềm vui với chúng tôi.</p>
@@ -1037,9 +1039,9 @@ onBeforeUnmount(() => {
       </form>
     </section>
 
-    <section class="wishes section reveal" :class="{ 'wishes--with-thanks': announcement }">
+    <section v-if="wishes.length" class="wishes section" :class="{ 'wishes--with-thanks': announcement }">
       <p class="script">Lời chúc</p>
-      <h2>Thương gửi đến hai bạn</h2>
+      <h2>{{ isParentsInvitation ? 'Thương gửi đến hai con' : 'Thương gửi đến hai bạn' }}</h2>
       <div
         ref="wishList"
         class="wish-list"
