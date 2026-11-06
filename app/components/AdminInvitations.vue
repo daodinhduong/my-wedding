@@ -7,6 +7,7 @@ type Invitation = {
   guestName: string
   note: string | null
   personalMessage: string | null
+  twoMeals: boolean
   isSent: boolean
   deliveryType: 'invitation' | 'announcement'
   invitationSide: 'nha-trai' | 'nha-gai'
@@ -27,7 +28,7 @@ const dialog = ref<HTMLDialogElement>()
 const editingId = ref('')
 const isSentLocked = ref(false)
 const hasPersonalMessage = ref(false)
-const form = reactive({ inviterRole: 'couple' as Invitation['inviterRole'], guestName: '', note: '', personalMessage: '', isSent: false, deliveryType: 'invitation' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
+const form = reactive({ twoMeals: false, inviterRole: 'couple' as Invitation['inviterRole'], guestName: '', note: '', personalMessage: '', isSent: false, deliveryType: 'invitation' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
 const deliveryLabels = { invitation: 'Thiệp mời', announcement: 'Thiệp báo hỷ' }
 const sentCount = computed(() => invitations.value.filter(item => item.isSent).length)
 const filtered = computed(() => invitations.value.filter((item) => {
@@ -54,7 +55,7 @@ function openForm(item?: Invitation) {
   form.personalMessage = item?.personalMessage || ''
   hasPersonalMessage.value = !!form.personalMessage.trim()
   isSentLocked.value = item?.isSent === true
-  Object.assign(form, { inviterRole: item?.inviterRole || 'couple', guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || sideFilter.value })
+  Object.assign(form, { twoMeals: item?.twoMeals ?? false, inviterRole: item?.inviterRole || 'couple', guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || sideFilter.value })
   formError.value = ''
   dialog.value?.showModal()
 }
@@ -167,6 +168,7 @@ async function copyLink(item: Invitation) {
           <label>Hình thức<select v-model="form.deliveryType"><option value="invitation">Thiệp mời</option><option value="announcement">Thiệp báo hỷ</option></select></label>
         </div>
         <label v-if="editingId">Trạng thái<select v-model="form.isSent" :disabled="isSentLocked"><option :value="false">Chưa gửi</option><option :value="true">Đã gửi</option></select></label>
+        <label class="message-toggle"><input v-model="form.twoMeals" type="checkbox">Đi ăn 2 bữa</label>
         <label class="message-toggle"><input v-model="hasPersonalMessage" type="checkbox" aria-controls="personal-message-input" :aria-expanded="hasPersonalMessage">Lời nhắn riêng</label>
         <label v-if="hasPersonalMessage" for="personal-message-input">Nội dung lời nhắn<textarea id="personal-message-input" v-model="form.personalMessage" rows="3" maxlength="2000" /></label>
         <label>Ghi chú nội bộ<textarea v-model="form.note" rows="3" maxlength="2000" /></label>

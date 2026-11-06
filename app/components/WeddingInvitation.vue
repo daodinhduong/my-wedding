@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { CalendarDays, Clock3, Hourglass, Heart } from 'lucide-vue-next'
 
-const props = defineProps<{ side: 'nha-trai' | 'nha-gai', announcement?: boolean, guestName?: string, inviterRole?: 'parents' | 'couple', invitationId?: string, personalMessage?: string | null }>()
+const props = defineProps<{ side: 'nha-trai' | 'nha-gai', announcement?: boolean, twoMeals?: boolean, guestName?: string, inviterRole?: 'parents' | 'couple', invitationId?: string, personalMessage?: string | null }>()
 const isParentsInvitation = computed(() => props.inviterRole === 'parents')
 const isBrideCeremony = computed(() => !props.announcement && props.side === 'nha-gai')
 const ceremony = computed(() => isBrideCeremony.value ? 'vu quy' : 'thành hôn')
@@ -84,6 +84,8 @@ type RsvpForm = {
   guestName: string
   wishMessage: string
   attendanceStatus: AttendanceStatus
+  attendRehearsal: boolean
+  attendCeremony: boolean
   guestCount: number
 }
 
@@ -148,8 +150,18 @@ function syncIntroScrollLock() {
 const form = reactive<RsvpForm>({
   guestName: props.guestName || '',
   wishMessage: '',
+  attendRehearsal: true,
+  attendCeremony: true,
   attendanceStatus: props.announcement ? 'not_attending' : 'attending',
   guestCount: props.announcement ? 0 : 2
+})
+
+const mealChoice = computed({
+  get: () => form.attendRehearsal && form.attendCeremony ? 'both' : form.attendRehearsal ? 'rehearsal' : form.attendCeremony ? 'ceremony' : 'both',
+  set: (value: string) => {
+    form.attendRehearsal = value === 'both' || value === 'rehearsal'
+    form.attendCeremony = value === 'both' || value === 'ceremony'
+  }
 })
 
 const hasSavedResponse = ref(false)
@@ -163,6 +175,9 @@ if (props.invitationId) {
     form.guestName = previous.guestName
     form.wishMessage = previous.wishMessage || ''
     form.attendanceStatus = previous.attendanceStatus === 'attending' ? 'attending' : 'not_attending'
+    form.attendRehearsal = previous.attendRehearsal ?? false
+    form.attendCeremony = previous.attendCeremony ?? false
+    if (!form.attendRehearsal && !form.attendCeremony) mealChoice.value = 'both'
     form.guestCount = previous.guestCount
     hasSavedResponse.value = true
   }
@@ -361,6 +376,8 @@ async function submitRsvp() {
         wishMessage: form.wishMessage,
         attendanceStatus: props.announcement ? 'not_attending' : form.attendanceStatus,
         guestCount: !props.announcement && form.attendanceStatus === 'attending' ? form.guestCount : 0,
+        attendRehearsal: !!props.twoMeals && !props.announcement && form.attendanceStatus === 'attending' && form.attendRehearsal,
+        attendCeremony: !!props.twoMeals && !props.announcement && form.attendanceStatus === 'attending' && form.attendCeremony,
         invitationSide: props.side,
         invitationId: props.invitationId
       }
@@ -372,6 +389,7 @@ async function submitRsvp() {
     else {
       form.guestName = ''
       form.wishMessage = ''
+      mealChoice.value = 'both'
       form.attendanceStatus = props.announcement ? 'not_attending' : 'attending'
       form.guestCount = props.announcement ? 0 : 2
     }
@@ -1023,6 +1041,12 @@ onBeforeUnmount(() => {
           </label>
         </fieldset>
 
+        <fieldset v-if="twoMeals && !announcement && form.attendanceStatus === 'attending'">
+          <legend>Bạn sẽ tham dự bữa nào?</legend>
+          <label class="radio-row"><input v-model="mealChoice" type="radio" name="meal-choice" value="rehearsal">Ăn tối áp rạp ngày {{ side === 'nha-gai' ? '27' : '28' }}/11/2026</label>
+          <label class="radio-row"><input v-model="mealChoice" type="radio" name="meal-choice" value="ceremony">{{ side === 'nha-gai' ? 'Lễ vu quy ngày 28' : 'Lễ thành hôn ngày 29' }}/11/2026</label>
+          <label class="radio-row"><input v-model="mealChoice" type="radio" name="meal-choice" value="both">Cả 2 bữa</label>
+        </fieldset>
         <label v-if="!announcement && form.attendanceStatus === 'attending'">
           Số lượng người tham dự
           <input v-model.number="form.guestCount" type="number" min="1" max="20">

@@ -12,6 +12,8 @@ model WeddingResponse {
   guestName        String   @map("guest_name")
   wishMessage      String?  @map("wish_message")
   attendanceStatus String   @default("pending") @map("attendance_status")
+  attendRehearsal Boolean @default(false) @map("attend_rehearsal")
+  attendCeremony Boolean @default(false) @map("attend_ceremony")
   guestCount       Int      @default(0) @map("guest_count")
   isApproved       Boolean  @default(false) @map("is_approved")
   responseSource   String   @default("website") @map("response_source")
@@ -46,6 +48,7 @@ model Invitation {
   personalMessage String? @map("personal_message")
   guestName      String   @map("guest_name")
   note           String?
+  twoMeals Boolean @default(false) @map("two_meals")
   isSent         Boolean  @default(false) @map("is_sent")
   deliveryType   String   @default("invitation") @map("delivery_type")
   invitationSide String   @default("nha-trai") @map("invitation_side")

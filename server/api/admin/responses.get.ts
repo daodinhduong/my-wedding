@@ -14,6 +14,8 @@ export default defineEventHandler(async (event) => {
       wishMessage: true,
       attendanceStatus: true,
       guestCount: true,
+      attendRehearsal: true,
+      attendCeremony: true,
       isApproved: true,
       responseSource: true,
       invitationSide: true,

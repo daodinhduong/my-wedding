@@ -70,7 +70,7 @@ export default defineEventHandler(async (event) => {
     where: { id: recordId },
     data: {
       ...(hasApprovalUpdate ? { isApproved: body.isApproved as boolean } : {}),
-      ...(hasAttendanceUpdate ? { attendanceStatus, guestCount } : {}),
+      ...(hasAttendanceUpdate ? { attendanceStatus, guestCount, ...(attendanceStatus === 'not_attending' ? { attendRehearsal: false, attendCeremony: false } : {}) } : {}),
       ...(hasSideUpdate ? { invitationSide: body.invitationSide as string | null } : {})
     },
     select: {
@@ -78,6 +78,8 @@ export default defineEventHandler(async (event) => {
       isApproved: true,
       attendanceStatus: true,
       guestCount: true,
+      attendRehearsal: true,
+      attendCeremony: true,
       invitationSide: true
     }
   })

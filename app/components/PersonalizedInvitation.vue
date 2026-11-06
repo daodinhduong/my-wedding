@@ -11,6 +11,7 @@ useHead({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] })
   <WeddingInvitation
     v-if="invitation"
     :side="invitation.invitationSide === 'nha-gai' ? 'nha-gai' : 'nha-trai'"
+    :two-meals="invitation.twoMeals"
     :announcement="invitation.deliveryType === 'announcement'"
     :guest-name="invitation.guestName"
     :inviter-role="invitation.inviterRole === 'parents' ? 'parents' : 'couple'"

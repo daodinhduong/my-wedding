@@ -27,5 +27,6 @@ export function validateInvitation(body: Record<string, unknown>) {
   if (typeof body.isSent !== 'boolean') {
     throw createError({ statusCode: 400, statusMessage: 'Trang thai gui khong hop le.' })
   }
-  return { senderName, inviterRole, guestName, note: note || null, personalMessage: personalMessage || null, deliveryType: body.deliveryType, invitationSide: body.invitationSide, isSent: body.isSent }
+  if (body.twoMeals !== undefined && typeof body.twoMeals !== 'boolean') throw createError({ statusCode: 400, statusMessage: 'Lua chon hai bua khong hop le.' })
+  return { twoMeals: body.twoMeals === true, senderName, inviterRole, guestName, note: note || null, personalMessage: personalMessage || null, deliveryType: body.deliveryType, invitationSide: body.invitationSide, isSent: body.isSent }
 }

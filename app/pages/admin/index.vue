@@ -4,6 +4,8 @@ type AdminWeddingResponse = {
   guestName: string
   wishMessage: string | null
   attendanceStatus: 'attending' | 'not_attending' | 'pending'
+  attendRehearsal: boolean
+  attendCeremony: boolean
   guestCount: number
   isApproved: boolean
   responseSource: 'website' | 'admin'
@@ -241,6 +243,8 @@ async function updateResponseAttendance() {
     const updated = await $fetch<{
       id: string
       isApproved: boolean
+      attendRehearsal: boolean
+      attendCeremony: boolean
       attendanceStatus: AdminWeddingResponse['attendanceStatus']
       guestCount: number
       invitationSide: AdminWeddingResponse['invitationSide']
@@ -255,6 +259,8 @@ async function updateResponseAttendance() {
     })
 
     response.attendanceStatus = updated.attendanceStatus
+    response.attendRehearsal = updated.attendRehearsal
+    response.attendCeremony = updated.attendCeremony
     response.guestCount = updated.guestCount
     response.isApproved = updated.isApproved
     response.invitationSide = updated.invitationSide
@@ -377,6 +383,7 @@ function formatCreatedAt(value: string) {
               <th>Lời chúc</th>
               <th>Tham dự</th>
               <th>Số người</th>
+              <th>Bữa tham dự</th>
               <th>Bên mời</th>
               <th>Nguồn</th>
               <th>Ngày gửi</th>
@@ -385,7 +392,7 @@ function formatCreatedAt(value: string) {
           </thead>
           <tbody>
             <tr v-if="!filteredResponses.length">
-              <td colspan="8" class="empty-state">Không có phản hồi trong bộ lọc này.</td>
+              <td colspan="9" class="empty-state">Không có phản hồi trong bộ lọc này.</td>
             </tr>
             <tr v-for="response in filteredResponses" :key="response.id">
               <td>
@@ -397,6 +404,11 @@ function formatCreatedAt(value: string) {
               </td>
               <td>{{ formatAttendance(response.attendanceStatus) }}</td>
               <td>{{ response.guestCount }}</td>
+              <td>
+                <div v-if="response.attendRehearsal">Áp rạp tối {{ response.invitationSide === 'nha-gai' ? '27' : '28' }}/11</div>
+                <div v-if="response.attendCeremony">{{ response.invitationSide === 'nha-gai' ? 'Vu quy 28/11' : 'Thành hôn 29/11' }}</div>
+                <span v-if="!response.attendRehearsal && !response.attendCeremony">—</span>
+              </td>
               <td>{{ formatInvitationSide(response.invitationSide) }}</td>
               <td>
                 <span class="source-badge" :class="`is-${response.responseSource}`">

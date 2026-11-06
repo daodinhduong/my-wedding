@@ -8,6 +8,8 @@ type RsvpBody = {
   guestName?: unknown
   wishMessage?: unknown
   attendanceStatus?: unknown
+  attendRehearsal?: unknown
+  attendCeremony?: unknown
   guestCount?: unknown
   invitationSide?: unknown
   invitationId?: unknown
@@ -23,7 +25,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'ID thiep moi khong hop le.' })
   }
   const invitationId = hasInvitationId ? (body.invitationId as string).trim() : null
-  if (invitationId && !await prisma.invitation.findUnique({ where: { id: invitationId }, select: { id: true } })) {
+  const invitation = invitationId ? await prisma.invitation.findUnique({ where: { id: invitationId }, select: { twoMeals: true, invitationSide: true, deliveryType: true } }) : null
+  if (invitationId && !invitation) {
     throw createError({ statusCode: 404, statusMessage: 'Khong tim thay thiep moi.' })
   }
   const guestName = typeof body.guestName === 'string' ? body.guestName.trim() : ''
@@ -33,7 +36,11 @@ export default defineEventHandler(async (event) => {
     : undefined
   const rawGuestCount = Number(body.guestCount)
   const guestCount = attendanceStatus === 'attending' ? rawGuestCount : 0
-  const invitationSide = body.invitationSide
+  const invitationSide = invitation?.invitationSide ?? body.invitationSide
+  for (const value of [body.attendRehearsal, body.attendCeremony]) {
+    if (value !== undefined && typeof value !== 'boolean') throw createError({ statusCode: 400, statusMessage: 'Lua chon bua an khong hop le.' })
+  }
+  const canSelectMeals = invitation?.twoMeals === true && invitation.deliveryType === 'invitation' && attendanceStatus === 'attending'
 
   if (!guestName) {
     throw createError({ statusCode: 400, statusMessage: 'Vui long nhap ten cua ban.' })
@@ -67,6 +74,8 @@ export default defineEventHandler(async (event) => {
       wishMessage: wishMessage || null,
       attendanceStatus,
       guestCount,
+      attendRehearsal: canSelectMeals && body.attendRehearsal === true,
+      attendCeremony: canSelectMeals && body.attendCeremony === true,
       isApproved: !!invitationId,
       responseSource: 'website',
       invitationSide

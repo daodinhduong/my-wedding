@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
   event.node.res.setHeader('Cache-Control', 'no-store')
   const invitation = await prisma.invitation.findUnique({
     where: { id: event.context.params?.id || '' },
-    select: { response: { select: { guestName: true, wishMessage: true, attendanceStatus: true, guestCount: true } } }
+    select: { response: { select: { guestName: true, wishMessage: true, attendanceStatus: true, guestCount: true, attendRehearsal: true, attendCeremony: true } } }
   })
   if (!invitation) throw createError({ statusCode: 404, statusMessage: 'Khong tim thay thiep moi.' })
   return { response: invitation.response }
