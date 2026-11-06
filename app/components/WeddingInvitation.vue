@@ -3,9 +3,11 @@ import { CalendarDays, Clock3, Hourglass, Heart } from 'lucide-vue-next'
 
 const props = defineProps<{ side: 'nha-trai' | 'nha-gai', announcement?: boolean, guestName?: string, inviterRole?: 'parents' | 'couple', invitationId?: string, personalMessage?: string | null }>()
 const isParentsInvitation = computed(() => props.inviterRole === 'parents')
+const isBrideCeremony = computed(() => !props.announcement && props.side === 'nha-gai')
+const ceremony = computed(() => isBrideCeremony.value ? 'vu quy' : 'thành hôn')
 const guestAddress = computed(() => props.guestName || (isParentsInvitation.value ? 'quý vị' : 'bạn'))
 const introTitle = computed(() => isParentsInvitation.value
-  ? (props.announcement ? 'Trân trọng báo tin thành hôn của hai con' : 'Gia đình chúng tôi trân trọng kính mời quý vị đến chung vui cùng gia đình')
+  ? (props.announcement ? `Trân trọng báo tin ${ceremony.value} của hai con` : 'Gia đình chúng tôi trân trọng kính mời quý vị đến chung vui cùng gia đình')
   : (props.announcement ? 'Chúng tôi sắp về chung một nhà' : 'Có bạn ở đây, ngày vui thêm ý nghĩa'))
 const venue = computed(() => props.side === 'nha-gai'
   ? {
@@ -22,22 +24,27 @@ const venue = computed(() => props.side === 'nha-gai'
 const countdownIcons = [CalendarDays, Clock3, Hourglass, Heart]
 const siteUrl = 'https://duonghawedding.io.vn/'
 const pageUrl = computed(() => `${siteUrl}${props.invitationId ? encodeURIComponent(props.invitationId) : ''}`)
-const socialImageUrl = `${siteUrl}photos/og-wedding.png?v=3`
-const pageTitle = computed(() => props.announcement ? 'Báo hỷ Đình Dương & Thu Hà' : 'Thiệp cưới Đình Dương & Thu Hà')
-const weddingDate = computed(() => new Date(props.side === 'nha-gai'
+const socialImageUrl = computed(() => props.announcement
+  ? 'https://pub-3395f4cf2cdf4d4f8c9fe93858d7da4a.r2.dev/FTW09694.jpg.webp'
+  : `${siteUrl}photos/${props.side === 'nha-gai' ? 'og-wedding-nha-gai.png' : 'og-wedding.png'}?v=4`)
+const pageTitle = computed(() => props.announcement ? `Trân trọng báo tin đến ${guestAddress.value}` : `Trân trọng kính mời ${guestAddress.value}`)
+const weddingDate = computed(() => new Date(isBrideCeremony.value
   ? '2026-11-28T10:00:00+07:00'
   : '2026-11-29T10:00:00+07:00'))
-const weddingDateText = computed(() => props.side === 'nha-gai' ? '28.11.2026' : '29.11.2026')
-const weddingDateTimeText = computed(() => props.side === 'nha-gai'
+const weddingDateText = computed(() => isBrideCeremony.value ? '28.11.2026' : '29.11.2026')
+const weddingDateTimeText = computed(() => isBrideCeremony.value
   ? '10:00, Thứ Bảy, 28.11.2026'
   : '10:00, Chủ nhật, 29.11.2026')
+const socialImageAlt = computed(() => props.announcement
+  ? 'Ảnh báo hỷ Đình Dương & Thu Hà'
+  : `Thiệp cưới Đình Dương & Thu Hà — ${weddingDateTimeText.value}`)
 const pageDescription = computed(() => isParentsInvitation.value
   ? (props.announcement
-      ? `Gia đình chúng tôi trân trọng báo tin lễ thành hôn của hai con Đình Dương và Thu Hà sẽ được tổ chức vào ngày ${weddingDateText.value}. Kính gửi tin vui đến quý vị cùng lời cảm ơn chân thành.`
-      : `Gia đình chúng tôi trân trọng kính mời quý vị đến chung vui trong lễ thành hôn của hai con Đình Dương và Thu Hà, vào ${weddingDateTimeText.value}.`)
+      ? `Lễ thành hôn của hai con Đình Dương và Thu Hà sẽ được tổ chức vào ngày ${weddingDateText.value}. Kính gửi tin vui đến ${guestAddress.value} cùng lời cảm ơn chân thành.`
+      : `Đến chung vui trong lễ ${ceremony.value} của hai con Đình Dương và Thu Hà, vào ${weddingDateTimeText.value}.`)
   : props.announcement
-  ? `Đình Dương và Thu Hà trân trọng báo hỷ. Lễ thành hôn của chúng tôi sẽ được tổ chức vào ngày ${weddingDateText.value}. Xin chia sẻ niềm vui này cùng gia đình, người thân và bạn bè gần xa.`
-  : `Trân trọng kính mời bạn đến chung vui trong ngày thành hôn của Đình Dương và Thu Hà, ngày ${weddingDateTimeText.value}.`)
+  ? `Lễ thành hôn của chúng tôi sẽ được tổ chức vào ngày ${weddingDateText.value}. Xin chia sẻ niềm vui này cùng gia đình, người thân và bạn bè gần xa.`
+  : `Đến chung vui trong lễ ${ceremony.value} của chúng mình, vào ${weddingDateTimeText.value}.`)
 
 useSeoMeta({
   title: pageTitle,
@@ -48,16 +55,16 @@ useSeoMeta({
   ogUrl: () => pageUrl.value,
   ogSiteName: 'Đình Dương & Thu Hà',
   ogLocale: 'vi_VN',
-  ogImage: socialImageUrl,
-  ogImageAlt: 'Ảnh cưới của Đình Dương và Thu Hà',
-  ogImageType: 'image/png',
-  ogImageWidth: 1200,
-  ogImageHeight: 630,
+  ogImage: () => socialImageUrl.value,
+  ogImageAlt: () => socialImageAlt.value,
+  ogImageType: () => props.announcement ? 'image/webp' : 'image/png',
+  ogImageWidth: () => props.announcement ? 1280 : 1200,
+  ogImageHeight: () => props.announcement ? 1920 : 630,
   twitterCard: 'summary_large_image',
   twitterTitle: pageTitle,
   twitterDescription: () => pageDescription.value,
-  twitterImage: socialImageUrl,
-  twitterImageAlt: 'Ảnh cưới của Đình Dương và Thu Hà'
+  twitterImage: () => socialImageUrl.value,
+  twitterImageAlt: () => socialImageAlt.value
 })
 
 useHead({
@@ -263,7 +270,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeWishes)
 })
 
-const timeline = [
+const timeline = computed(() => [
   {
     time: '10:00',
     title: 'Đón khách',
@@ -271,7 +278,7 @@ const timeline = [
   },
   {
     time: '11:00',
-    title: 'Lễ thành hôn',
+    title: `Lễ ${ceremony.value}`,
     text: 'Khoảnh khắc trao nhẫn và lời hẹn ước trước gia đình, bạn bè.'
   },
   {
@@ -279,7 +286,7 @@ const timeline = [
     title: 'Tiệc cưới trưa',
     text: 'Dùng bữa, nâng ly và chia sẻ niềm vui trong không gian ấm cúng.'
   }
-]
+])
 
 const countdown = computed<CountdownItem[]>(() => {
   const diff = Math.max(weddingDate.value.getTime() - now.value.getTime(), 0)
@@ -812,17 +819,17 @@ onBeforeUnmount(() => {
     </section>
 
     <section :id="announcement ? 'announcement' : undefined" class="intro section reveal">
-      <p class="script">{{ announcement ? 'Tin vui của gia đình' : guestName ? 'Ngày chung đôi' : 'Trân trọng kính mời' }}</p>
+      <p class="script">{{ announcement ? (isParentsInvitation ? 'Tin vui của gia đình' : 'Tin vui của chúng mình') : guestName ? 'Ngày chung đôi' : 'Trân trọng kính mời' }}</p>
       <h2 style="line-height: 1.2;">{{ introTitle }}</h2>
       <p v-if="personalMessage?.trim()" class="personal-message">{{ personalMessage }}</p>
       <template v-else-if="isParentsInvitation">
-        <p v-if="announcement">Gia đình chúng tôi trân trọng báo tin lễ thành hôn của hai con<br><strong>Đình Dương &amp; Thu Hà</strong><br>sẽ được tổ chức vào ngày {{ weddingDateText }}.</p>
-        <p v-else>Trong ngày lễ thành hôn của hai con<br><strong>Đình Dương &amp; Thu Hà.</strong></p>
+        <p v-if="announcement">Gia đình chúng tôi trân trọng báo tin lễ {{ ceremony }} của hai con<br><strong>Đình Dương &amp; Thu Hà</strong><br>sẽ được tổ chức vào ngày {{ weddingDateText }}.</p>
+        <p v-else>Trong ngày lễ {{ ceremony }} của hai con<br><strong>Đình Dương &amp; Thu Hà.</strong></p>
         <p v-if="announcement">Gia đình chúng tôi xin được chia sẻ niềm vui này cùng quý vị. Dù cách trở đường xa, tình cảm và những lời chúc phúc của quý vị luôn là món quà quý giá dành cho hai con và gia đình.</p>
         <p v-else>Sự hiện diện của quý vị là niềm vinh hạnh và là lời chúc ý nghĩa để hai con bắt đầu hành trình xây dựng hạnh phúc gia đình.</p>
       </template>
       <template v-else-if="announcement">
-        <p>Đình Dương và Thu Hà trân trọng báo hỷ.<br>Lễ thành hôn của chúng tôi sẽ được tổ chức vào ngày {{ weddingDateText }}.</p>
+        <p>Đình Dương và Thu Hà trân trọng báo hỷ.<br>Lễ {{ ceremony }} của chúng tôi sẽ được tổ chức vào ngày {{ weddingDateText }}.</p>
         <p>Chúng tôi xin gửi tin vui này đến gia đình, người thân và bạn bè gần xa. Dù chưa thể gặp nhau trong ngày cưới, chúng tôi luôn trân quý tình cảm và những lời chúc phúc của bạn.</p>
       </template>
       <p v-else>
@@ -861,8 +868,14 @@ onBeforeUnmount(() => {
         >
       </div>
       <div class="story-copy reveal">
-        <p class="eyebrow">Our story</p>
+        <p class="eyebrow">{{ isParentsInvitation ? 'Câu chuyện của hai con' : 'Our story' }}</p>
         <h2>Một đời, một người, một hành trình</h2>
+        <template v-if="isParentsInvitation">
+          <p>Giáng sinh năm 2020, một cuộc gặp gỡ tình cờ đã mở đầu cho câu chuyện của Đình Dương và Thu Hà. Ngày 15.04.2021, hai con chính thức chọn cùng nhau bước trên một hành trình.</p>
+          <p>Qua những chuyến đi và những kỷ niệm bên nhau, tình yêu của hai con lớn dần cùng năm tháng. Gia đình chúng tôi hạnh phúc khi được chứng kiến hai con trưởng thành, yêu thương và đồng hành cùng nhau.</p>
+          <p>Hôm nay, hai con bắt đầu một chặng đường mới, cùng vun đắp một mái ấm. Những lời chúc phúc của quý vị là món quà quý giá dành cho hai con và gia đình.</p>
+        </template>
+        <template v-else>
           <p>
             Giáng sinh năm 2020, giữa không khí rộn ràng của mùa lễ hội, một cuộc gặp gỡ tình cờ đã mở đầu cho câu chuyện đẹp nhất của chúng mình. Để rồi ngày 15.04.2021, hai trái tim chính thức chọn bước chung trên một hành trình.
           </p>
@@ -872,6 +885,7 @@ onBeforeUnmount(() => {
           <p>
             Và rồi chúng mình nhận ra, <strong>hạnh phúc không nằm ở nơi mình đến, mà ở người luôn nắm tay mình trên mọi hành trình.</strong> Hôm nay, chúng mình chọn bắt đầu một chuyến đi mới — chuyến đi mang tên <em>một đời bên nhau</em>.
           </p>
+        </template>
       </div>
     </section>
 
@@ -968,10 +982,10 @@ onBeforeUnmount(() => {
     <section v-if="invitationId" id="rsvp" class="rsvp section">
       <div class="rsvp-copy reveal">
         <p class="eyebrow">{{ announcement ? 'Lời chúc phúc' : 'Xác nhận tham dự' }}</p>
-        <h2>{{ announcement ? 'Gửi lời chúc đến cô dâu và chú rể' : 'Gửi lời chúc và xác nhận tham dự' }}</h2>
+        <h2>{{ announcement ? 'Gửi lời chúc đến hai bạn' : 'Gửi lời chúc và xác nhận tham dự' }}</h2>
         <p v-if="isParentsInvitation && announcement">Gia đình chúng tôi trân trọng đón nhận những lời chúc phúc của quý vị dành cho hai con. Kính mời quý vị để lại lời chúc và cùng chia sẻ niềm vui với gia đình.</p>
         <p v-else-if="isParentsInvitation">Để gia đình chuẩn bị đón tiếp chu đáo, kính mong quý vị xác nhận số lượng người tham dự. Quý vị cũng có thể gửi lời chúc phúc đến hai con tại đây.</p>
-        <p v-else-if="announcement">Những lời chúc từ bạn là món quà ý nghĩa đối với chúng tôi trong ngày thành hôn. Bạn có thể gửi lời chúc tại đây để cùng chia sẻ niềm vui với chúng tôi.</p>
+        <p v-else-if="announcement">Những lời chúc từ bạn là món quà ý nghĩa đối với chúng tôi trong ngày lễ {{ ceremony }}. Bạn có thể gửi lời chúc tại đây để cùng chia sẻ niềm vui với chúng tôi.</p>
         <p v-else>
           Bạn giúp chúng tôi chuẩn bị chu đáo hơn bằng cách xác nhận số lượng
           người tham dự trước ngày cưới.
@@ -1025,7 +1039,7 @@ onBeforeUnmount(() => {
 
     <section class="wishes section reveal" :class="{ 'wishes--with-thanks': announcement }">
       <p class="script">Lời chúc</p>
-      <h2>{{ isParentsInvitation ? 'Thương gửi đến hai con' : 'Thương gửi đến hai bạn' }}</h2>
+      <h2>Thương gửi đến hai bạn</h2>
       <div
         ref="wishList"
         class="wish-list"
@@ -1052,12 +1066,12 @@ onBeforeUnmount(() => {
       <p class="script">Lời cảm ơn</p>
       <h2 style="line-height: 1.2;">Trân quý từng lời chúc phúc</h2>
       <template v-if="isParentsInvitation">
-        <p>Gia đình chúng tôi chân thành cảm ơn quý vị đã dành tình cảm và gửi lời chúc phúc đến hai con. Sự quan tâm của quý vị là niềm động viên quý báu đối với hai con và gia đình trong ngày thành hôn.</p>
+        <p>Gia đình chúng tôi chân thành cảm ơn quý vị đã dành tình cảm và gửi lời chúc phúc đến hai con. Sự quan tâm của quý vị là niềm động viên quý báu đối với hai con và gia đình trong ngày lễ {{ ceremony }}.</p>
         <p>Kính chúc quý vị cùng gia đình luôn mạnh khỏe, bình an và hạnh phúc.</p>
         <p>Trân trọng,<br>{{ side === 'nha-gai' ? 'Gia đình nhà gái' : 'Gia đình nhà trai' }}</p>
       </template>
       <template v-else>
-        <p>Chân thành cảm ơn bạn đã dành tình cảm và gửi lời chúc phúc đến chúng tôi. Dù ở gần hay xa, sự quan tâm của bạn luôn góp phần làm nên niềm vui trọn vẹn trong ngày thành hôn.</p>
+        <p>Chân thành cảm ơn bạn đã dành tình cảm và gửi lời chúc phúc đến chúng tôi. Dù ở gần hay xa, sự quan tâm của bạn luôn góp phần làm nên niềm vui trọn vẹn trong ngày lễ {{ ceremony }}.</p>
         <p>Hẹn gặp bạn trong một dịp gần nhất để cùng chia sẻ những kỷ niệm của ngày vui.</p>
         <p>Trân trọng,<br>Đình Dương &amp; Thu Hà</p>
       </template>
