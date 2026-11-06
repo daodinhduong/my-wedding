@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { CalendarDays, Clock3, Hourglass, Heart } from 'lucide-vue-next'
 
-const props = defineProps<{ side: 'nha-trai' | 'nha-gai', announcement?: boolean, guestName?: string, senderName?: string, invitationId?: string, personalMessage?: string | null }>()
-const route = useRoute()
-const isParentsInvitation = computed(() => route.query.inviter === 'parents')
+const props = defineProps<{ side: 'nha-trai' | 'nha-gai', announcement?: boolean, guestName?: string, inviterRole?: 'parents' | 'couple', invitationId?: string, personalMessage?: string | null }>()
+const isParentsInvitation = computed(() => props.inviterRole === 'parents')
 const guestAddress = computed(() => props.guestName || (isParentsInvitation.value ? 'quý vị' : 'bạn'))
 const introTitle = computed(() => isParentsInvitation.value
-  ? (props.announcement ? 'Trân trọng báo tin thành hôn của hai con' : 'Kính mời quý vị đến chung vui cùng gia đình')
+  ? (props.announcement ? 'Trân trọng báo tin thành hôn của hai con' : 'Gia đình chúng tôi trân trọng kính mời quý vị đến chung vui cùng gia đình')
   : (props.announcement ? 'Chúng tôi sắp về chung một nhà' : 'Có bạn ở đây, ngày vui thêm ý nghĩa'))
 const venue = computed(() => props.side === 'nha-gai'
   ? {
@@ -22,7 +21,7 @@ const venue = computed(() => props.side === 'nha-gai'
 
 const countdownIcons = [CalendarDays, Clock3, Hourglass, Heart]
 const siteUrl = 'https://duonghawedding.io.vn/'
-const pageUrl = computed(() => `${siteUrl}${props.announcement ? 'bao-hy' : ''}${props.invitationId ? `${props.announcement ? '/' : ''}${encodeURIComponent(props.invitationId)}` : ''}${isParentsInvitation.value ? '?inviter=parents' : ''}`)
+const pageUrl = computed(() => `${siteUrl}${props.invitationId ? encodeURIComponent(props.invitationId) : ''}`)
 const socialImageUrl = `${siteUrl}photos/og-wedding.png?v=3`
 const pageTitle = computed(() => props.announcement ? 'Báo hỷ Đình Dương & Thu Hà' : 'Thiệp cưới Đình Dương & Thu Hà')
 const weddingDate = computed(() => new Date(props.side === 'nha-gai'
@@ -795,7 +794,7 @@ onBeforeUnmount(() => {
 
       <div class="hero-copy" :class="{ 'hero-copy--personal': guestName }">
         <h1>
-          <span class="hero-script">{{ announcement ? 'Báo hỷ' : 'Wedding' }}</span>
+          <span class="hero-script">Wedding</span>
           <span class="hero-names">Đình Dương<br>Thu Hà</span>
         </h1>
         <p class="hero-date">{{ announcement ? weddingDateText : weddingDateTimeText }}</p>
@@ -805,7 +804,7 @@ onBeforeUnmount(() => {
             <svg class="recipient-frame" viewBox="0 0 400 90" preserveAspectRatio="none" aria-hidden="true">
               <path d="M38 1 H362 Q377 1 379 17 C405 24 405 66 379 73 Q377 89 362 89 H38 Q23 89 21 73 C-5 66 -5 24 21 17 Q23 1 38 1 Z" />
             </svg>
-            <p class="recipient-label">Trân trọng kính mời</p>
+            <p class="recipient-label">{{ announcement ? 'TRÂN TRỌNG BÁO TIN ĐẾN' : 'Trân trọng kính mời' }}</p>
             <p class="recipient-name">{{ guestName }}</p>
           </div>
         </div>
@@ -813,13 +812,14 @@ onBeforeUnmount(() => {
     </section>
 
     <section :id="announcement ? 'announcement' : undefined" class="intro section reveal">
-      <p class="script">{{ guestName ? 'Ngày chung đôi' : announcement ? (isParentsInvitation ? 'Trân trọng báo hỷ' : 'Thương gửi tin vui') : 'Trân trọng kính mời' }}</p>
+      <p class="script">{{ announcement ? 'Tin vui của gia đình' : guestName ? 'Ngày chung đôi' : 'Trân trọng kính mời' }}</p>
       <h2 style="line-height: 1.2;">{{ introTitle }}</h2>
       <p v-if="personalMessage?.trim()" class="personal-message">{{ personalMessage }}</p>
       <template v-else-if="isParentsInvitation">
-        <p>Gia đình chúng tôi {{ announcement ? 'trân trọng báo tin lễ thành hôn của hai con' : 'trân trọng kính mời quý vị đến dự lễ thành hôn của hai con' }}<br><strong>Đình Dương &amp; Thu Hà</strong><br>{{ announcement ? 'sẽ được tổ chức vào ngày' : 'được tổ chức vào' }} {{ announcement ? weddingDateText : weddingDateTimeText }}.</p>
+        <p v-if="announcement">Gia đình chúng tôi trân trọng báo tin lễ thành hôn của hai con<br><strong>Đình Dương &amp; Thu Hà</strong><br>sẽ được tổ chức vào ngày {{ weddingDateText }}.</p>
+        <p v-else>Trong ngày lễ thành hôn của hai con<br><strong>Đình Dương &amp; Thu Hà.</strong></p>
         <p v-if="announcement">Gia đình chúng tôi xin được chia sẻ niềm vui này cùng quý vị. Dù cách trở đường xa, tình cảm và những lời chúc phúc của quý vị luôn là món quà quý giá dành cho hai con và gia đình.</p>
-        <p v-else>Sự hiện diện và lời chúc phúc của quý vị là niềm vinh hạnh của gia đình chúng tôi, đồng thời là món quà ý nghĩa dành cho hai con trong ngày thành hôn.</p>
+        <p v-else>Sự hiện diện của quý vị là niềm vinh hạnh và là lời chúc ý nghĩa để hai con bắt đầu hành trình xây dựng hạnh phúc gia đình.</p>
       </template>
       <template v-else-if="announcement">
         <p>Đình Dương và Thu Hà trân trọng báo hỷ.<br>Lễ thành hôn của chúng tôi sẽ được tổ chức vào ngày {{ weddingDateText }}.</p>
@@ -965,7 +965,7 @@ onBeforeUnmount(() => {
       <a :href="venue.mapUrl" target="_blank" rel="noreferrer">Xem bản đồ</a>
     </section>
 
-    <section id="rsvp" class="rsvp section">
+    <section v-if="invitationId" id="rsvp" class="rsvp section">
       <div class="rsvp-copy reveal">
         <p class="eyebrow">{{ announcement ? 'Lời chúc phúc' : 'Xác nhận tham dự' }}</p>
         <h2>{{ announcement ? 'Gửi lời chúc đến cô dâu và chú rể' : 'Gửi lời chúc và xác nhận tham dự' }}</h2>
@@ -1023,9 +1023,9 @@ onBeforeUnmount(() => {
       </form>
     </section>
 
-    <section class="wishes section reveal">
+    <section class="wishes section reveal" :class="{ 'wishes--with-thanks': announcement }">
       <p class="script">Lời chúc</p>
-      <h2>{{ isParentsInvitation ? 'Lời chúc dành cho hai con' : 'Thương gửi đến hai bạn' }}</h2>
+      <h2>{{ isParentsInvitation ? 'Thương gửi đến hai con' : 'Thương gửi đến hai bạn' }}</h2>
       <div
         ref="wishList"
         class="wish-list"
@@ -1414,6 +1414,11 @@ onBeforeUnmount(() => {
 .intro {
   max-width: 780px;
   text-align: center;
+}
+
+.intro h2 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  text-wrap: balance;
 }
 
 .script {
@@ -1927,6 +1932,14 @@ button:disabled {
 
 .wishes {
   text-align: center;
+}
+
+.wishes.section.wishes--with-thanks {
+  padding-bottom: 16px;
+}
+
+footer.intro.section {
+  padding-top: 16px;
 }
 
 .wish-list {

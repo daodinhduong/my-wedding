@@ -42,11 +42,12 @@ model GalleryImage {
 model Invitation {
   id             String   @id @default(uuid())
   senderName     String   @map("sender_name")
+  inviterRole    String   @default("couple") @map("inviter_role")
   personalMessage String? @map("personal_message")
   guestName      String   @map("guest_name")
   note           String?
   isSent         Boolean  @default(false) @map("is_sent")
-  deliveryType   String   @default("online") @map("delivery_type")
+  deliveryType   String   @default("invitation") @map("delivery_type")
   invitationSide String   @default("nha-trai") @map("invitation_side")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
