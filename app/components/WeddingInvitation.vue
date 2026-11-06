@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { CalendarDays, Clock3, Hourglass, Heart } from 'lucide-vue-next'
 
-const props = defineProps<{ side: 'nha-trai' | 'nha-gai', announcement?: boolean, guestName?: string, senderName?: string, invitationId?: string }>()
+const props = defineProps<{ side: 'nha-trai' | 'nha-gai', announcement?: boolean, guestName?: string, senderName?: string, invitationId?: string, personalMessage?: string | null }>()
 const route = useRoute()
 const isParentsInvitation = computed(() => route.query.inviter === 'parents')
 const guestAddress = computed(() => props.guestName || (isParentsInvitation.value ? 'quý vị' : 'bạn'))
 const introTitle = computed(() => isParentsInvitation.value
   ? (props.announcement ? 'Trân trọng báo tin thành hôn của hai con' : 'Kính mời quý vị đến chung vui cùng gia đình')
-  : (props.announcement ? 'Chúng tôi sắp về chung một nhà' : 'Có bạn, niềm vui thêm trọn vẹn'))
+  : (props.announcement ? 'Chúng tôi sắp về chung một nhà' : 'Có bạn ở đây, ngày vui thêm ý nghĩa'))
 const venue = computed(() => props.side === 'nha-gai'
   ? {
       name: 'Khách sạn Sunflower',
@@ -22,7 +22,7 @@ const venue = computed(() => props.side === 'nha-gai'
 
 const countdownIcons = [CalendarDays, Clock3, Hourglass, Heart]
 const siteUrl = 'https://duonghawedding.io.vn/'
-const pageUrl = computed(() => `${siteUrl}${props.announcement ? 'bao-hy' : props.side}${props.guestName && route.params.id ? `/${encodeURIComponent(String(route.params.id))}` : ''}${isParentsInvitation.value ? '?inviter=parents' : ''}`)
+const pageUrl = computed(() => `${siteUrl}${props.announcement ? 'bao-hy' : ''}${props.invitationId ? `${props.announcement ? '/' : ''}${encodeURIComponent(props.invitationId)}` : ''}${isParentsInvitation.value ? '?inviter=parents' : ''}`)
 const socialImageUrl = `${siteUrl}photos/og-wedding.png?v=3`
 const pageTitle = computed(() => props.announcement ? 'Báo hỷ Đình Dương & Thu Hà' : 'Thiệp cưới Đình Dương & Thu Hà')
 const weddingDate = computed(() => new Date(props.side === 'nha-gai'
@@ -815,7 +815,8 @@ onBeforeUnmount(() => {
     <section :id="announcement ? 'announcement' : undefined" class="intro section reveal">
       <p class="script">{{ guestName ? 'Ngày chung đôi' : announcement ? (isParentsInvitation ? 'Trân trọng báo hỷ' : 'Thương gửi tin vui') : 'Trân trọng kính mời' }}</p>
       <h2 style="line-height: 1.2;">{{ introTitle }}</h2>
-      <template v-if="isParentsInvitation">
+      <p v-if="personalMessage?.trim()" class="personal-message">{{ personalMessage }}</p>
+      <template v-else-if="isParentsInvitation">
         <p>Gia đình chúng tôi {{ announcement ? 'trân trọng báo tin lễ thành hôn của hai con' : 'trân trọng kính mời quý vị đến dự lễ thành hôn của hai con' }}<br><strong>Đình Dương &amp; Thu Hà</strong><br>{{ announcement ? 'sẽ được tổ chức vào ngày' : 'được tổ chức vào' }} {{ announcement ? weddingDateText : weddingDateTimeText }}.</p>
         <p v-if="announcement">Gia đình chúng tôi xin được chia sẻ niềm vui này cùng quý vị. Dù cách trở đường xa, tình cảm và những lời chúc phúc của quý vị luôn là món quà quý giá dành cho hai con và gia đình.</p>
         <p v-else>Sự hiện diện và lời chúc phúc của quý vị là niềm vinh hạnh của gia đình chúng tôi, đồng thời là món quà ý nghĩa dành cho hai con trong ngày thành hôn.</p>
@@ -825,8 +826,8 @@ onBeforeUnmount(() => {
         <p>Chúng tôi xin gửi tin vui này đến gia đình, người thân và bạn bè gần xa. Dù chưa thể gặp nhau trong ngày cưới, chúng tôi luôn trân quý tình cảm và những lời chúc phúc của bạn.</p>
       </template>
       <p v-else>
-        Chúng mình sắp bắt đầu một chặng đường mới, cùng nhau xây dựng một mái ấm nhỏ.
-        Mong được gặp bạn trong ngày cưới, cùng trò chuyện, nâng ly và lưu lại những kỷ niệm thật đẹp.
+        Từ hai người xa lạ đến một lời hẹn trăm năm, chúng mình đã cùng nhau đi qua thật nhiều khoảnh khắc đáng nhớ.
+        Và trong ngày bắt đầu hành trình mới, chúng mình mong được sẻ chia niềm hạnh phúc ấy cùng những người thân thương.
       </p>
     </section>
 
@@ -860,17 +861,17 @@ onBeforeUnmount(() => {
         >
       </div>
       <div class="story-copy reveal">
-        <p class="eyebrow">{{ isParentsInvitation ? 'Câu chuyện của hai con' : 'Our story' }}</p>
-        <h2 style="line-height: 1.2;">Một lời hẹn, một mùa thương</h2>
-        <p v-if="isParentsInvitation">Từ những ngày đầu gặp gỡ đến khi quyết định cùng nhau xây dựng tổ ấm, Đình Dương và Thu Hà đã có một hành trình đầy yêu thương. Gia đình chúng tôi hạnh phúc khi được chứng kiến hai con bước sang một chặng đường mới.</p>
-        <p v-else>
-          Chúng tôi gặp nhau trong những ngày rất bình thường, rồi cùng nhau
-          gom góp từng khoảnh khắc nhỏ thành một câu chuyện đủ đầy.
-        </p>
-        <p>
-          Ngày cưới là nơi câu chuyện ấy được kể lại bằng nụ cười, ánh nến và
-          lời chúc phúc của những người thân yêu.
-        </p>
+        <p class="eyebrow">Our story</p>
+        <h2>Một đời, một người, một hành trình</h2>
+          <p>
+            Giáng sinh năm 2020, giữa không khí rộn ràng của mùa lễ hội, một cuộc gặp gỡ tình cờ đã mở đầu cho câu chuyện đẹp nhất của chúng mình. Để rồi ngày 15.04.2021, hai trái tim chính thức chọn bước chung trên một hành trình.
+          </p>
+          <p>
+            Từ những người trẻ mang trong mình bao háo hức về thế giới rộng lớn, chúng mình đã cùng nhau đặt chân đến nhiều miền đất, ngắm nhìn những khung cảnh mới và góp nhặt biết bao kỷ niệm. Qua mỗi chuyến đi, mỗi chặng đường, tình yêu cứ thế lớn dần cùng những tháng năm trưởng thành bên nhau.
+          </p>
+          <p>
+            Và rồi chúng mình nhận ra, <strong>hạnh phúc không nằm ở nơi mình đến, mà ở người luôn nắm tay mình trên mọi hành trình.</strong> Hôm nay, chúng mình chọn bắt đầu một chuyến đi mới — chuyến đi mang tên <em>một đời bên nhau</em>.
+          </p>
       </div>
     </section>
 
@@ -1433,6 +1434,13 @@ h2 {
 
 p {
   line-height: 1.8;
+}
+
+.intro .personal-message {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  color: #9f5f50;
+  font-style: italic;
 }
 
 .rsvp-copy,
@@ -2008,6 +2016,22 @@ button:disabled {
 }
 
 @media (min-width: 821px) {
+  .story-copy h2 {
+    font-size: clamp(2rem, 3.5vw, 3rem);
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  .story-copy > p:not(.eyebrow) {
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    margin-block: 16px;
+  }
+
+  .story-copy > h2 + p {
+    margin-top: 20px;
+  }
+
   .gallery-frame:not(.is-portrait) .gallery-frame__backdrop {
     display: none;
   }

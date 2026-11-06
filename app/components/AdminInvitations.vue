@@ -6,6 +6,7 @@ type Invitation = {
   senderName: string
   guestName: string
   note: string | null
+  personalMessage: string | null
   isSent: boolean
   deliveryType: 'online' | 'paper' | 'both'
   invitationSide: 'nha-trai' | 'nha-gai'
@@ -25,7 +26,7 @@ const sideFilter = ref<Invitation['invitationSide']>('nha-trai')
 const dialog = ref<HTMLDialogElement>()
 const editingId = ref('')
 const isSentLocked = ref(false)
-const form = reactive({ senderName: '', guestName: '', note: '', isSent: false, deliveryType: 'online' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
+const form = reactive({ senderName: '', guestName: '', note: '', personalMessage: '', isSent: false, deliveryType: 'online' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
 const deliveryLabels = { online: 'Thiệp online', paper: 'Thiệp giấy', both: 'Online và giấy' }
 const sentCount = computed(() => invitations.value.filter(item => item.isSent).length)
 const filtered = computed(() => invitations.value.filter((item) => {
@@ -49,6 +50,7 @@ async function load() {
 onMounted(load)
 function openForm(item?: Invitation) {
   editingId.value = item?.id || ''
+  form.personalMessage = item?.personalMessage || ''
   isSentLocked.value = item?.isSent === true
   Object.assign(form, { senderName: item?.senderName || '', guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'online', invitationSide: item?.invitationSide || 'nha-trai' })
   formError.value = ''
@@ -93,7 +95,7 @@ async function remove(item: Invitation) {
   finally { busyId.value = '' }
 }
 async function copyLink(item: Invitation) {
-  const url = `${window.location.origin}/${item.invitationSide}/${item.id}`
+  const url = `${window.location.origin}/${encodeURIComponent(item.id)}`
   try {
     await navigator.clipboard.writeText(url)
     message.value = `Đã sao chép link thiệp của ${item.guestName}.`
@@ -136,7 +138,7 @@ async function copyLink(item: Invitation) {
               <td>{{ deliveryLabels[item.deliveryType] }}</td>
               <td><button type="button" class="sent-button" :class="{ sent: item.isSent }" :aria-pressed="item.isSent" :disabled="!!busyId || item.isSent" :title="item.isSent ? 'Thiệp đã gửi, không thể chuyển về chưa gửi' : 'Đánh dấu đã gửi'" @click="toggleSent(item)">{{ busyId === item.id ? 'Đang lưu...' : item.isSent ? 'Đã gửi ✓' : 'Chưa gửi' }}</button></td>
               <td><div class="row-actions">
-                <a :href="`/${item.invitationSide}/${item.id}`" target="_blank" rel="noopener">Mở thiệp ↗</a>
+                <a :href="`/${encodeURIComponent(item.id)}`" target="_blank" rel="noopener">Mở thiệp ↗</a>
                 <button type="button" class="secondary icon-action" aria-label="Sao chép link" title="Sao chép link" @click="copyLink(item)"><Copy :size="18" aria-hidden="true" /></button>
                 <button type="button" class="icon-action" aria-label="Sửa thiệp mời" title="Sửa thiệp mời" :disabled="!!busyId" @click="openForm(item)"><Pencil :size="18" aria-hidden="true" /></button>
                 <button type="button" class="danger icon-action" aria-label="Xóa thiệp mời" title="Xóa thiệp mời" :disabled="!!busyId" @click="remove(item)"><Trash2 :size="18" aria-hidden="true" /></button>
@@ -156,6 +158,7 @@ async function copyLink(item: Invitation) {
           <label>Hình thức gửi<select v-model="form.deliveryType"><option value="online">Thiệp online</option><option value="paper">Thiệp giấy</option><option value="both">Online và giấy</option></select></label>
         </div>
         <label>Trạng thái<select v-model="form.isSent" :disabled="isSentLocked"><option :value="false">Chưa gửi</option><option :value="true">Đã gửi</option></select></label>
+        <label>Lời nhắn riêng (không bắt buộc)<textarea v-model="form.personalMessage" rows="3" maxlength="2000" placeholder="Thay thế đoạn giới thiệu dưới tiêu đề; để trống để dùng nội dung mặc định" /></label>
         <label>Ghi chú nội bộ<textarea v-model="form.note" rows="3" maxlength="2000" placeholder="Không hiển thị trên thiệp" /></label>
         <p v-if="formError" class="error" role="alert">{{ formError }}</p>
         <div class="actions"><button type="button" class="secondary" :disabled="saving" @click="dialog?.close()">Hủy</button><button type="submit" :disabled="saving">{{ saving ? 'Đang lưu...' : editingId ? 'Lưu thay đổi' : 'Tạo thiệp' }}</button></div>

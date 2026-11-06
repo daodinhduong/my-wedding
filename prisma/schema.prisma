@@ -42,6 +42,7 @@ model GalleryImage {
 model Invitation {
   id             String   @id @default(uuid())
   senderName     String   @map("sender_name")
+  personalMessage String? @map("personal_message")
   guestName      String   @map("guest_name")
   note           String?
   isSent         Boolean  @default(false) @map("is_sent")

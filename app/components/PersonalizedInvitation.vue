@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{ side: 'nha-trai' | 'nha-gai', announcement?: boolean }>()
+const props = defineProps<{ announcement?: boolean }>()
 const route = useRoute()
 const { data: invitation, error } = await useFetch(`/api/invitations/${encodeURIComponent(String(route.params.id))}`)
 if (error.value || !invitation.value) {
@@ -11,10 +11,11 @@ useHead({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] })
 <template>
   <WeddingInvitation
     v-if="invitation"
-    :side="props.side"
+    :side="invitation.invitationSide === 'nha-gai' ? 'nha-gai' : 'nha-trai'"
     :announcement="props.announcement"
     :guest-name="invitation.guestName"
     :sender-name="invitation.senderName"
+    :personal-message="invitation.personalMessage"
     :invitation-id="String(route.params.id)"
   />
 </template>

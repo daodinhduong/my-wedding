@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
   event.node.res.setHeader('Cache-Control', 'no-store')
   const invitation = await prisma.invitation.findUnique({
     where: { id: getRouterParam(event, 'id') || '' },
-    select: { guestName: true, senderName: true, invitationSide: true }
+    select: { guestName: true, senderName: true, invitationSide: true, personalMessage: true }
   })
   if (!invitation) throw createError({ statusCode: 404, statusMessage: 'Khong tim thay thiep moi.' })
   return invitation

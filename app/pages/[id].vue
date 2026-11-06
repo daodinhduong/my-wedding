@@ -3,5 +3,5 @@ definePageMeta({ key: route => route.fullPath })
 </script>
 
 <template>
-  <PersonalizedInvitation side="nha-gai" />
+  <PersonalizedInvitation />
 </template>

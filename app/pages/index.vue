@@ -1,8 +1,3 @@
-<script setup lang="ts">
-const route = useRoute()
-await navigateTo({ path: '/nha-trai', query: route.query }, { replace: true, redirectCode: 302 })
-</script>
-
 <template>
-  <div />
+  <WeddingInvitation side="nha-trai" />
 </template>
