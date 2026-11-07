@@ -1,6 +1,8 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-06-16',
   devtools: { enabled: false },
+  // Keep social metadata near the start of HTML for link-preview crawlers.
+  features: { inlineStyles: false },
   vite: {
     resolve: {
       dedupe: ['vue', '@vue/runtime-core', '@vue/runtime-dom', '@vue/reactivity', '@vue/shared']
