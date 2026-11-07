@@ -23,7 +23,7 @@ type CreateResponseForm = {
 
 const password = ref('')
 const authenticatedPassword = ref('')
-const activeTab = ref<'responses' | 'gallery' | 'invitations'>('responses')
+const activeTab = ref<'responses' | 'gallery' | 'invitations' | 'schedule'>('responses')
 const isUnlocked = ref(false)
 const isLoading = ref(false)
 const isCreateDialogOpen = ref(false)
@@ -338,7 +338,11 @@ function formatCreatedAt(value: string) {
         <button type="button" role="tab" :aria-selected="activeTab === 'responses'" :class="{ active: activeTab === 'responses' }" @click="activeTab = 'responses'">Phản hồi</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'gallery'" :class="{ active: activeTab === 'gallery' }" @click="activeTab = 'gallery'">Album ảnh</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'invitations'" :class="{ active: activeTab === 'invitations' }" @click="activeTab = 'invitations'">Thiệp mời</button>
+        <button type="button" role="tab" :aria-selected="activeTab === 'schedule'" :class="{ active: activeTab === 'schedule' }" @click="activeTab = 'schedule'">Lịch trình</button>
       </div>
+      <KeepAlive>
+        <AdminSchedule v-if="activeTab === 'schedule'" :admin-password="authenticatedPassword" />
+      </KeepAlive>
       <KeepAlive>
         <AdminGallery v-if="activeTab === 'gallery'" :admin-password="authenticatedPassword" />
       </KeepAlive>

@@ -287,24 +287,10 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeWishes)
 })
 
-const timeline = computed(() => [
-  {
-    time: '10:00',
-    title: 'Đón khách',
-    text: 'Cùng lưu lại những khung hình đầu tiên tại khu vực welcome.'
-  },
-  {
-    time: '11:00',
-    title: `Lễ ${ceremony.value}`,
-    text: 'Khoảnh khắc trao nhẫn và lời hẹn ước trước gia đình, bạn bè.'
-  },
-  {
-    time: '11:30',
-    title: 'Tiệc cưới trưa',
-    text: 'Dùng bữa, nâng ly và chia sẻ niềm vui trong không gian ấm cúng.'
-  }
-])
-
+const { data: timeline, error: timelineError, refresh: refreshTimeline } = await useFetch('/api/schedule', {
+  query: { side: computed(() => props.side) },
+  default: () => []
+})
 const countdown = computed<CountdownItem[]>(() => {
   const diff = Math.max(weddingDate.value.getTime() - now.value.getTime(), 0)
   const days = Math.floor(diff / 86_400_000)
@@ -909,15 +895,15 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <section v-if="!announcement" class="timeline section reveal">
+    <section v-if="!announcement && (timeline.length || timelineError)" class="timeline section reveal">
       <p class="script">Wedding day</p>
       <h2>Lịch trình buổi tiệc</h2>
-      <div class="timeline-list">
-        <article v-for="item in timeline" :key="item.time" class="timeline-item">
+      <p v-if="timelineError" role="alert">Không thể tải lịch trình. <button type="button" @click="refreshTimeline()">Thử lại</button></p><div class="timeline-list">
+        <article v-for="item in timeline" :key="item.id" class="timeline-item">
           <time>{{ item.time }}</time>
           <div>
             <h3>{{ item.title }}</h3>
-            <p>{{ item.text }}</p>
+            <p>{{ item.description }}</p>
           </div>
         </article>
       </div>
