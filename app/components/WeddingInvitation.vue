@@ -24,7 +24,7 @@ const venue = computed(() => props.side === 'nha-gai'
 const countdownIcons = [CalendarDays, Clock3, Hourglass, Heart]
 const siteUrl = 'https://duonghawedding.io.vn/'
 const pageUrl = computed(() => `${siteUrl}${props.invitationId ? encodeURIComponent(props.invitationId) : ''}`)
-const socialImageUrl = computed(() => `${siteUrl}photos/${isBrideCeremony.value ? 'og-wedding-nha-gai.png' : 'og-wedding.png'}?v=5`)
+const socialImageUrl = computed(() => `${siteUrl}photos/${isBrideCeremony.value ? 'og-wedding-nha-gai-v2.png' : 'og-wedding-v2.png'}`)
 const pageTitle = computed(() => props.announcement ? `Trân trọng báo tin đến ${guestAddress.value}` : `Trân trọng kính mời ${guestAddress.value}`)
 const weddingDate = computed(() => new Date(isBrideCeremony.value
   ? '2026-11-28T10:00:00+07:00'
@@ -56,8 +56,8 @@ useSeoMeta({
   ogImage: () => socialImageUrl.value,
   ogImageAlt: () => socialImageAlt.value,
   ogImageType: 'image/png',
-  ogImageWidth: 1200,
-  ogImageHeight: 630,
+  ogImageWidth: 1731,
+  ogImageHeight: 909,
   twitterCard: 'summary_large_image',
   twitterTitle: pageTitle,
   twitterDescription: () => pageDescription.value,
