@@ -28,11 +28,11 @@ const socialImageUrl = computed(() => `${siteUrl}photos/${isBrideCeremony.value 
 const pageTitle = computed(() => props.announcement ? `Trân trọng báo tin đến ${guestAddress.value}` : `Trân trọng kính mời ${guestAddress.value}`)
 const weddingDate = computed(() => new Date(isBrideCeremony.value
   ? '2026-11-28T10:00:00+07:00'
-  : '2026-11-29T10:00:00+07:00'))
+  : '2026-11-29T10:30:00+07:00'))
 const weddingDateText = computed(() => isBrideCeremony.value ? '28.11.2026' : '29.11.2026')
 const weddingDateTimeText = computed(() => isBrideCeremony.value
   ? '10:00, Thứ Bảy, 28.11.2026'
-  : '10:00, Chủ nhật, 29.11.2026')
+  : '10:30, Chủ nhật, 29.11.2026')
 const socialImageAlt = computed(() => props.announcement
   ? 'Ảnh báo hỷ Đình Dương & Thu Hà'
   : `Thiệp cưới Đình Dương & Thu Hà — ${weddingDateTimeText.value}`)
@@ -153,7 +153,7 @@ const form = reactive<RsvpForm>({
   attendRehearsal: true,
   attendCeremony: true,
   attendanceStatus: props.announcement ? 'not_attending' : 'attending',
-  guestCount: props.announcement ? 0 : 2
+  guestCount: props.announcement ? 0 : 1
 })
 
 const mealChoice = computed({
@@ -377,7 +377,7 @@ async function submitRsvp() {
       form.wishMessage = ''
       mealChoice.value = 'both'
       form.attendanceStatus = props.announcement ? 'not_attending' : 'attending'
-      form.guestCount = props.announcement ? 0 : 2
+      form.guestCount = props.announcement ? 0 : 1
     }
     rsvpStatusTone.value = 'success'
     rsvpStatusMessage.value = `Cảm ơn ${guestAddress.value}!`

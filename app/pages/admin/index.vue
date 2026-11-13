@@ -58,6 +58,9 @@ const editForm = reactive({
 
 const approvedCount = computed(() => filteredResponses.value.filter((item) => item.isApproved).length)
 const pendingCount = computed(() => filteredResponses.value.filter((item) => !item.isApproved).length)
+const attendingGuestCount = computed(() => filteredResponses.value.reduce((total, item) => {
+  return item.attendanceStatus === 'attending' ? total + item.guestCount : total
+}, 0))
 const approvedGuestCount = computed(() => {
   return filteredResponses.value.reduce((total, item) => {
     if (!item.isApproved || item.attendanceStatus !== 'attending') {
@@ -360,7 +363,8 @@ function formatCreatedAt(value: string) {
           <span>{{ filteredResponses.length }} bản ghi</span>
           <span>{{ pendingCount }} chờ duyệt</span>
           <span>{{ approvedCount }} đã duyệt</span>
-          <span>{{ approvedGuestCount }} khách mời</span>
+          <span>{{ approvedGuestCount }} khách đã duyệt</span>
+          <span>Tổng người tham gia: {{ attendingGuestCount }}</span>
           <button type="button" @click="openCreateDialog">
             Thêm mới
           </button>
