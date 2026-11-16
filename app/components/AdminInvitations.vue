@@ -136,12 +136,13 @@ async function copyLink(item: Invitation) {
     <p v-if="message" class="hint" role="status">{{ message }}</p>
     <div class="table-wrap" :aria-busy="loading">
       <table>
-        <thead><tr><th>Tên khách mời</th><th>Người đứng lời mời</th><th>Ghi chú</th><th>Bên mời</th><th>Hình thức</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <thead><tr><th>STT</th><th>Tên khách mời</th><th>Người đứng lời mời</th><th>Ghi chú</th><th>Bên mời</th><th>Hình thức</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
         <tbody>
-          <tr v-if="loading"><td colspan="7" class="empty">Đang tải thiệp mời...</td></tr>
-          <tr v-else-if="!filtered.length"><td colspan="7" class="empty">{{ invitations.length ? 'Không có thiệp phù hợp với bộ lọc.' : 'Chưa có thiệp mời. Bấm “Thêm mới” để tạo thiệp đầu tiên.' }}</td></tr>
+          <tr v-if="loading"><td colspan="8" class="empty">Đang tải thiệp mời...</td></tr>
+          <tr v-else-if="!filtered.length"><td colspan="8" class="empty">{{ invitations.length ? 'Không có thiệp phù hợp với bộ lọc.' : 'Chưa có thiệp mời. Bấm “Thêm mới” để tạo thiệp đầu tiên.' }}</td></tr>
           <template v-else>
-            <tr v-for="item in filtered" :key="item.id">
+            <tr v-for="(item, index) in filtered" :key="item.id">
+              <td>{{ index + 1 }}</td>
               <td><strong>{{ item.guestName }}</strong></td><td>{{ item.inviterRole === 'parents' ? 'Bố mẹ' : 'Cô dâu & chú rể' }}</td>
               <td class="note">{{ item.note || '—' }}</td>
               <td>{{ item.invitationSide === 'nha-trai' ? 'Nhà trai' : 'Nhà gái' }}</td>

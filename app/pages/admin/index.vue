@@ -387,6 +387,7 @@ function formatCreatedAt(value: string) {
         <table>
           <thead>
             <tr>
+              <th>STT</th>
               <th>Khách</th>
               <th>Lời chúc</th>
               <th>Tham dự</th>
@@ -400,9 +401,10 @@ function formatCreatedAt(value: string) {
           </thead>
           <tbody>
             <tr v-if="!filteredResponses.length">
-              <td colspan="9" class="empty-state">Không có phản hồi trong bộ lọc này.</td>
+              <td colspan="10" class="empty-state">Không có phản hồi trong bộ lọc này.</td>
             </tr>
-            <tr v-for="response in filteredResponses" :key="response.id">
+            <tr v-for="(response, index) in filteredResponses" :key="response.id">
+              <td>{{ index + 1 }}</td>
               <td>
                 <strong>{{ response.guestName }}</strong>
                 <small>#{{ response.id }}</small>
