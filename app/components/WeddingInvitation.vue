@@ -247,12 +247,15 @@ function wishStride() {
 }
 
 function moveWish(direction: number, manual = true) {
-  if (!wishList.value) return
+  const list = wishList.value
+  const stride = wishStride()
+  if (!list || !stride) return
   if (manual) wishInteractedAt = Date.now()
   const last = Math.max(0, wishes.value.length - wishesPerView.value)
-  const current = Math.round(wishList.value.scrollLeft / wishStride())
-  const next = current + direction > last ? 0 : current + direction < 0 ? last : current + direction
-  wishList.value.scrollTo({ left: next * wishStride(), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
+  const current = Math.round(list.scrollLeft / stride)
+  const atEnd = direction > 0 && (current >= last || list.scrollLeft + list.clientWidth >= list.scrollWidth - 4)
+  const next = atEnd ? 0 : current + direction < 0 ? last : Math.min(last, current + direction)
+  list.scrollTo({ left: next * stride, behavior: 'smooth' })
 }
 
 function resizeWishes() {
@@ -270,16 +273,15 @@ watch(wishList, (list) => {
 
 onMounted(() => {
   resizeWishes()
-  wishAutoplay.value = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
   window.addEventListener('resize', resizeWishes)
   wishTimer = window.setInterval(() => {
     const list = wishList.value
     if (!list || !isIntroOpen.value || !wishAutoplay.value || wishHovered.value || document.hidden
-      || Date.now() - wishInteractedAt < 6000 || list.parentElement?.contains(document.activeElement)
+      || Date.now() - wishInteractedAt < 1200
       || wishes.value.length <= wishesPerView.value) return
     const bounds = list.getBoundingClientRect()
     if (bounds.top < window.innerHeight && bounds.bottom > 0) moveWish(1, false)
-  }, 4500)
+  }, 2500)
 })
 
 onBeforeUnmount(() => {
@@ -1059,10 +1061,11 @@ onBeforeUnmount(() => {
         aria-roledescription="carousel"
         aria-label="Lời chúc của khách mời"
         tabindex="0"
-        @pointerenter="wishHovered = $event.pointerType === 'mouse'"
-        @pointerleave="wishHovered = false"
-        @pointerdown="wishInteractedAt = Date.now()"
-        @touchend="wishInteractedAt = Date.now()"
+        @mouseenter="wishHovered = true"
+        @mouseleave="wishHovered = false"
+        @touchstart.passive="wishHovered = true"
+        @touchend.passive="wishHovered = false; wishInteractedAt = Date.now()"
+        @touchcancel.passive="wishHovered = false"
         @wheel.passive="wishInteractedAt = Date.now()"
         @keydown.left.prevent="moveWish(-1)"
         @keydown.right.prevent="moveWish(1)"

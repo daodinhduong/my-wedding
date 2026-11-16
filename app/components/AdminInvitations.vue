@@ -23,6 +23,7 @@ const formError = ref('')
 const message = ref('')
 const search = ref('')
 const statusFilter = ref('all')
+const inviterFilter = ref<'all' | Invitation['inviterRole']>('all')
 const sideFilter = ref<Invitation['invitationSide']>('nha-trai')
 const dialog = ref<HTMLDialogElement>()
 const editingId = ref('')
@@ -30,13 +31,14 @@ const isSentLocked = ref(false)
 const hasPersonalMessage = ref(false)
 const form = reactive({ twoMeals: false, inviterRole: 'couple' as Invitation['inviterRole'], guestName: '', note: '', personalMessage: '', isSent: false, deliveryType: 'invitation' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
 const deliveryLabels = { invitation: 'Thiệp mời', announcement: 'Thiệp báo hỷ' }
-const sentCount = computed(() => invitations.value.filter(item => item.isSent).length)
 const filtered = computed(() => invitations.value.filter((item) => {
   const keyword = search.value.trim().toLocaleLowerCase('vi')
   return (!keyword || `${item.guestName} ${item.inviterRole} ${item.note || ''}`.toLocaleLowerCase('vi').includes(keyword))
     && (statusFilter.value === 'all' || item.isSent === (statusFilter.value === 'sent'))
+    && (inviterFilter.value === 'all' || item.inviterRole === inviterFilter.value)
     && item.invitationSide === sideFilter.value
 }))
+const sentCount = computed(() => filtered.value.filter(item => item.isSent).length)
 function headers() { return { 'x-admin-password': props.adminPassword } }
 function errorText(cause: unknown) {
   const value = cause as { data?: { statusMessage?: string }; message?: string }
@@ -55,7 +57,7 @@ function openForm(item?: Invitation) {
   form.personalMessage = item?.personalMessage || ''
   hasPersonalMessage.value = !!form.personalMessage.trim()
   isSentLocked.value = item?.isSent === true
-  Object.assign(form, { twoMeals: item?.twoMeals ?? false, inviterRole: item?.inviterRole || 'couple', guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || sideFilter.value })
+  Object.assign(form, { twoMeals: item?.twoMeals ?? false, inviterRole: item?.inviterRole || (inviterFilter.value === 'parents' ? 'parents' : 'couple'), guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || sideFilter.value })
   formError.value = ''
   dialog.value?.showModal()
 }
@@ -70,6 +72,7 @@ async function save() {
     if (editingId.value) invitations.value = invitations.value.map(old => old.id === item.id ? item : old)
     else invitations.value.unshift(item)
     sideFilter.value = item.invitationSide
+    if (inviterFilter.value !== 'all' && inviterFilter.value !== item.inviterRole) inviterFilter.value = 'all'
     statusFilter.value = 'all'
     search.value = ''
     dialog.value?.close()
@@ -115,15 +118,16 @@ async function copyLink(item: Invitation) {
     <header>
       <div><p class="eyebrow">Admin</p><h1>Danh sách thiệp mời</h1></div>
       <div class="actions">
-        <span class="badge">{{ invitations.length }} thiệp</span>
+        <span class="badge">{{ filtered.length }} thiệp</span>
         <span class="badge">{{ sentCount }} đã gửi</span>
-        <span class="badge">{{ invitations.length - sentCount }} chưa gửi</span>
+        <span class="badge">{{ filtered.length - sentCount }} chưa gửi</span>
         <button type="button" @click="openForm()">Thêm mới</button>
       </div>
     </header>
     <p class="hint">Tạo link riêng cho từng khách. Trạng thái “Đã gửi” được bạn cập nhật sau khi gửi thiệp.</p>
     <div class="filters">
       <label>Tìm kiếm<input v-model="search" type="search" placeholder="Tên khách, người gửi, ghi chú"></label>
+      <label>Người mời<select v-model="inviterFilter"><option value="all">Tất cả</option><option value="couple">Cô dâu &amp; chú rể</option><option value="parents">Bố mẹ</option></select></label>
       <label>Trạng thái<select v-model="statusFilter"><option value="all">Tất cả</option><option value="unsent">Chưa gửi</option><option value="sent">Đã gửi</option></select></label>
       <label>Bên gửi<select v-model="sideFilter"><option value="nha-trai">Nhà trai</option><option value="nha-gai">Nhà gái</option></select></label>
       <button type="button" class="secondary" :disabled="loading" @click="load">Tải lại</button>
