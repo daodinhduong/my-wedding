@@ -62,6 +62,8 @@ export default defineEventHandler(async (event) => {
   return {
     ...response,
     id: response.id.toString(),
+    inviterRole: null,
+    invitationNote: null,
     createdAt: response.createdAt.toISOString(),
     updatedAt: response.updatedAt.toISOString()
   }

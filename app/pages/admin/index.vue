@@ -10,6 +10,8 @@ type AdminWeddingResponse = {
   isApproved: boolean
   responseSource: 'website' | 'admin'
   invitationSide: 'nha-trai' | 'nha-gai' | null
+  inviterRole: 'parents' | 'couple' | null
+  invitationNote: string | null
   createdAt: string
 }
 
@@ -35,10 +37,13 @@ const createStatusMessage = ref('')
 const editStatusMessage = ref('')
 const responses = ref<AdminWeddingResponse[]>([])
 const sideFilter = ref<'all' | 'nha-trai' | 'nha-gai' | 'unassigned'>('all')
+const inviterFilter = ref<'all' | 'couple' | 'parents' | 'unassigned'>('all')
 const filteredResponses = computed(() => responses.value.filter((item) => {
-  if (sideFilter.value === 'all') return true
-  if (sideFilter.value === 'unassigned') return item.invitationSide === null
-  return item.invitationSide === sideFilter.value
+  const matchesSide = sideFilter.value === 'all'
+    || (sideFilter.value === 'unassigned' ? item.invitationSide === null : item.invitationSide === sideFilter.value)
+  const matchesInviter = inviterFilter.value === 'all'
+    || (inviterFilter.value === 'unassigned' ? item.inviterRole === null : item.inviterRole === inviterFilter.value)
+  return matchesSide && matchesInviter
 }))
 const updatingIds = ref(new Set<string>())
 const deletingIds = ref(new Set<string>())
@@ -301,6 +306,15 @@ function formatInvitationSide(side: AdminWeddingResponse['invitationSide']) {
   return 'Chưa phân loại'
 }
 
+function formatGuestMeta(response: AdminWeddingResponse) {
+  if (!response.inviterRole) {
+    return `#${response.id}`
+  }
+  const inviter = response.inviterRole === 'parents' ? 'bố mẹ' : 'cô dâu & chú rể'
+  const base = `Khách mời của ${inviter}`
+  return response.invitationNote ? `${base} - ${response.invitationNote}` : base
+}
+
 function formatCreatedAt(value: string) {
   return new Intl.DateTimeFormat('vi-VN', {
     dateStyle: 'short',
@@ -373,15 +387,27 @@ function formatCreatedAt(value: string) {
 
       <p v-if="errorMessage" class="status is-error">{{ errorMessage }}</p>
 
-      <label class="side-filter">
-        Lọc khách mời
-        <select v-model="sideFilter">
-          <option value="all">Tất cả</option>
-          <option value="nha-trai">Nhà trai</option>
-          <option value="nha-gai">Nhà gái</option>
-          <option value="unassigned">Chưa phân loại</option>
-        </select>
-      </label>
+      <div class="response-filters">
+        <label class="side-filter">
+          Lọc khách mời
+          <select v-model="sideFilter">
+            <option value="all">Tất cả</option>
+            <option value="nha-trai">Nhà trai</option>
+            <option value="nha-gai">Nhà gái</option>
+            <option value="unassigned">Chưa phân loại</option>
+          </select>
+        </label>
+
+        <label class="side-filter">
+          Người đứng mời
+          <select v-model="inviterFilter">
+            <option value="all">Tất cả</option>
+            <option value="couple">Cô dâu &amp; chú rể</option>
+            <option value="parents">Bố mẹ</option>
+            <option value="unassigned">Chưa gắn thiệp</option>
+          </select>
+        </label>
+      </div>
 
       <div class="table-wrap">
         <table>
@@ -407,7 +433,7 @@ function formatCreatedAt(value: string) {
               <td>{{ index + 1 }}</td>
               <td>
                 <strong>{{ response.guestName }}</strong>
-                <small>#{{ response.id }}</small>
+                <small>{{ formatGuestMeta(response) }}</small>
               </td>
               <td class="wish-cell">
                 {{ response.wishMessage || 'Không có lời chúc' }}
@@ -763,6 +789,12 @@ button:disabled {
 .admin-tabs button.active {
   background: #6f3d34;
   color: #fff;
+}
+
+.response-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .side-filter {

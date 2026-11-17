@@ -19,13 +19,21 @@ export default defineEventHandler(async (event) => {
       isApproved: true,
       responseSource: true,
       invitationSide: true,
-      createdAt: true
+      createdAt: true,
+      invitation: {
+        select: {
+          inviterRole: true,
+          note: true
+        }
+      }
     }
   })
 
-  return responses.map(response => ({
+  return responses.map(({ invitation, ...response }) => ({
     ...response,
     id: response.id.toString(),
+    inviterRole: invitation?.inviterRole ?? null,
+    invitationNote: invitation?.note ?? null,
     createdAt: response.createdAt.toISOString()
   }))
 })
