@@ -73,6 +73,12 @@ function formatCurrency(amount: number | null) {
   return `${currencyFormatter.format(amount)} đ`
 }
 
+function formatGuestMeta(item: Invitation) {
+  const inviter = item.inviterRole === 'parents' ? 'bố mẹ' : 'cô dâu & chú rể'
+  const base = `Khách mời của ${inviter}`
+  return item.note ? `${base} - ${item.note}` : base
+}
+
 function isGifted(item: Invitation) {
   return item.giftType === 'other' || (item.giftAmount !== null && item.giftAmount > 0)
 }
@@ -80,7 +86,7 @@ function isGifted(item: Invitation) {
 const filtered = computed(() => invitations.value.filter((item) => {
   const keyword = search.value.trim().toLocaleLowerCase('vi')
   const gifted = isGifted(item)
-  return (!keyword || `${item.guestName} ${item.giftNote || ''}`.toLocaleLowerCase('vi').includes(keyword))
+  return (!keyword || `${item.guestName} ${item.note || ''} ${item.giftNote || ''}`.toLocaleLowerCase('vi').includes(keyword))
     && (inviterFilter.value === 'all' || item.inviterRole === inviterFilter.value)
     && (giftFilter.value === 'all' || (giftFilter.value === 'has_gift' ? gifted : !gifted))
     && item.invitationSide === sideFilter.value
@@ -212,8 +218,8 @@ async function save() {
           <tr>
             <th>STT</th>
             <th>Tên khách mời</th>
-            <th>Người đứng lời mời</th>
             <th>Bên mời</th>
+            <th>Tham dự</th>
             <th>Số người</th>
             <th>Bữa tham dự</th>
             <th>Ghi chú</th>
@@ -227,14 +233,24 @@ async function save() {
           <template v-else>
             <tr v-for="(item, index) in filtered" :key="item.id">
               <td>{{ index + 1 }}</td>
-              <td><strong>{{ item.guestName }}</strong></td>
-              <td>{{ item.inviterRole === 'parents' ? 'Bố mẹ' : 'Cô dâu & chú rể' }}</td>
+              <td>
+                <strong>{{ item.guestName }}</strong>
+                <small>{{ formatGuestMeta(item) }}</small>
+              </td>
               <td>{{ item.invitationSide === 'nha-trai' ? 'Nhà trai' : 'Nhà gái' }}</td>
-              <td>{{ item.response?.attendanceStatus === 'attending' ? item.response.guestCount : '—' }}</td>
+              <td>
+                <span v-if="item.response?.attendanceStatus === 'attending'" class="status-tag is-attending">Tham dự</span>
+                <span v-else-if="item.response?.attendanceStatus === 'not_attending'" class="status-tag is-declined">Không tham dự</span>
+                <span v-else class="status-tag is-pending">Chưa phản hồi</span>
+              </td>
+              <td>{{ item.response?.attendanceStatus === 'attending' ? item.response.guestCount : item.response?.attendanceStatus === 'not_attending' ? 0 : '—' }}</td>
               <td class="meals">
-                <div v-if="item.response?.attendRehearsal">Áp rạp tối {{ item.invitationSide === 'nha-gai' ? '27' : '28' }}/11</div>
-                <div v-if="item.response?.attendCeremony">{{ item.invitationSide === 'nha-gai' ? 'Vu quy 28/11' : 'Thành hôn 29/11' }}</div>
-                <span v-if="!item.response?.attendRehearsal && !item.response?.attendCeremony">—</span>
+                <template v-if="item.response?.attendanceStatus === 'attending'">
+                  <div v-if="item.response.attendRehearsal">Áp rạp tối {{ item.invitationSide === 'nha-gai' ? '27' : '28' }}/11</div>
+                  <div v-if="item.response.attendCeremony || !item.response.attendRehearsal">{{ item.invitationSide === 'nha-gai' ? 'Vu quy 28/11' : 'Thành hôn 29/11' }}</div>
+                </template>
+                <span v-else-if="item.response?.attendanceStatus === 'not_attending'" class="muted">Không tham dự</span>
+                <span v-else>—</span>
               </td>
               <td class="note">{{ item.giftNote || '—' }}</td>
               <td>
@@ -310,10 +326,17 @@ th { background: #f1e8df; color: #5a514c; font-size: .78rem; text-transform: upp
 tbody tr { transition: background-color .15s ease; }
 tbody tr:hover { background: #f6ede4; }
 td { overflow-wrap: anywhere; }
+td strong, td small { display: block; }
+td small { margin-top: 4px; color: #8c8078; font-size: .82rem; }
 .note { white-space: pre-wrap; max-width: 260px; }
 .amount { font-weight: 800; color: #2f5228; white-space: nowrap; }
 .amount.empty { font-weight: 400; color: #786a60; }
 .other-tag { display: inline-block; padding: 4px 10px; border: 1px solid #e6cf87; background: #fbf3d9; color: #7a5a0b; font-size: .84rem; font-weight: 800; white-space: nowrap; }
+.status-tag { display: inline-block; padding: 4px 10px; font-size: .82rem; font-weight: 700; white-space: nowrap; }
+.status-tag.is-attending { background: #e6efdf; color: #2f5228; }
+.status-tag.is-declined { background: #fbeae7; color: #9f3f34; }
+.status-tag.is-pending { color: #8c8078; font-weight: 500; padding-left: 0; }
+.muted { color: #8c8078; }
 .icon-action { min-height: 38px; padding: 6px 12px; font-size: .85rem; }
 .empty { text-align: center; color: #786a60; padding: 36px; }
 .error { margin: 0; color: #9f3f34; font-weight: 700; }

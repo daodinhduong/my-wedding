@@ -81,6 +81,7 @@ model WeddingExpense {
   title     String
   amount    Int
   side      String   @default("nha-trai")
+  paidBy    String?  @map("paid_by")
   note      String?
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)

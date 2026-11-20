@@ -6,6 +6,7 @@ type WeddingExpense = {
   title: string
   amount: number
   side: 'nha-trai' | 'nha-gai'
+  paidBy: string | null
   note: string | null
   createdAt: string
 }
@@ -26,6 +27,7 @@ const form = reactive({
   title: '',
   amount: '',
   side: 'nha-trai' as WeddingExpense['side'],
+  paidBy: '',
   note: ''
 })
 
@@ -68,7 +70,7 @@ function formatDate(value: string) {
 
 const filtered = computed(() => expenses.value.filter((item) => {
   const keyword = search.value.trim().toLocaleLowerCase('vi')
-  return (!keyword || `${item.title} ${item.note || ''}`.toLocaleLowerCase('vi').includes(keyword))
+  return (!keyword || `${item.title} ${item.paidBy || ''} ${item.note || ''}`.toLocaleLowerCase('vi').includes(keyword))
     && (sideFilter.value === 'all' || item.side === sideFilter.value)
 }))
 
@@ -104,6 +106,7 @@ function openForm(item?: WeddingExpense) {
   form.title = item?.title || ''
   form.amount = formatAmountInput(item?.amount)
   form.side = item?.side || (sideFilter.value === 'nha-gai' ? 'nha-gai' : 'nha-trai')
+  form.paidBy = item?.paidBy || ''
   form.note = item?.note || ''
   formError.value = ''
   dialog.value?.showModal()
@@ -127,6 +130,7 @@ async function save() {
         title: form.title,
         amount,
         side: form.side,
+        paidBy: form.paidBy,
         note: form.note
       }
     })
@@ -180,7 +184,7 @@ async function remove(item: WeddingExpense) {
     </header>
     <p class="hint">Theo dõi các khoản chi phí chuẩn bị và tổ chức đám cưới.</p>
     <div class="filters">
-      <label>Tìm kiếm<input v-model="search" type="search" placeholder="Hạng mục, ghi chú"></label>
+      <label>Tìm kiếm<input v-model="search" type="search" placeholder="Hạng mục, người chi, ghi chú"></label>
       <label>Bên
         <select v-model="sideFilter">
           <option value="all">Tất cả</option>
@@ -199,6 +203,7 @@ async function remove(item: WeddingExpense) {
             <th>STT</th>
             <th>Hạng mục chi tiêu</th>
             <th>Bên</th>
+            <th>Người chi</th>
             <th>Số tiền</th>
             <th>Ghi chú</th>
             <th>Ngày tạo</th>
@@ -206,13 +211,14 @@ async function remove(item: WeddingExpense) {
           </tr>
         </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="7" class="empty">Đang tải danh sách chi tiêu...</td></tr>
-          <tr v-else-if="!filtered.length"><td colspan="7" class="empty">{{ expenses.length ? 'Không có khoản chi phù hợp.' : 'Chưa có khoản chi nào. Bấm “Thêm khoản chi” để tạo mới.' }}</td></tr>
+          <tr v-if="loading"><td colspan="8" class="empty">Đang tải danh sách chi tiêu...</td></tr>
+          <tr v-else-if="!filtered.length"><td colspan="8" class="empty">{{ expenses.length ? 'Không có khoản chi phù hợp.' : 'Chưa có khoản chi nào. Bấm “Thêm khoản chi” để tạo mới.' }}</td></tr>
           <template v-else>
             <tr v-for="(item, index) in filtered" :key="item.id">
               <td>{{ index + 1 }}</td>
               <td><strong>{{ item.title }}</strong></td>
               <td>{{ item.side === 'nha-gai' ? 'Nhà gái' : 'Nhà trai' }}</td>
+              <td>{{ item.paidBy || '—' }}</td>
               <td class="amount">{{ formatCurrency(item.amount) }}</td>
               <td class="note">{{ item.note || '—' }}</td>
               <td class="date">{{ formatDate(item.createdAt) }}</td>
@@ -243,6 +249,10 @@ async function remove(item: WeddingExpense) {
             <option value="nha-trai">Nhà trai</option>
             <option value="nha-gai">Nhà gái</option>
           </select>
+        </label>
+        <label>
+          Người chi
+          <input v-model="form.paidBy" type="text" maxlength="100" placeholder="Ví dụ: Anh, Em, Mẹ, Nhà trai...">
         </label>
         <label>
           Số tiền (VNĐ)

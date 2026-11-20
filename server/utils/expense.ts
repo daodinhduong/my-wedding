@@ -16,6 +16,11 @@ export function validateExpense(body: Record<string, unknown>) {
     throw createError({ statusCode: 400, statusMessage: 'Ben chi tieu khong hop le.' })
   }
 
+  const paidBy = typeof body.paidBy === 'string' ? body.paidBy.trim() : ''
+  if ((body.paidBy !== undefined && body.paidBy !== null && typeof body.paidBy !== 'string') || paidBy.length > 100) {
+    throw createError({ statusCode: 400, statusMessage: 'Nguoi chi toi da 100 ky tu.' })
+  }
+
   const note = typeof body.note === 'string' ? body.note.trim() : ''
   if ((body.note !== undefined && body.note !== null && typeof body.note !== 'string') || note.length > 2000) {
     throw createError({ statusCode: 400, statusMessage: 'Ghi chu toi da 2000 ky tu.' })
@@ -25,6 +30,7 @@ export function validateExpense(body: Record<string, unknown>) {
     title,
     amount: parsedAmount,
     side,
+    paidBy: paidBy || null,
     note: note || null
   }
 }
