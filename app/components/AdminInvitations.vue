@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Copy, Pencil, Trash2 } from 'lucide-vue-next'
+import { Copy, ImageDown, Pencil, Trash2 } from 'lucide-vue-next'
 
 type Invitation = {
   id: string
@@ -28,6 +28,12 @@ const statusFilter = ref('all')
 const inviterFilter = ref<'all' | Invitation['inviterRole']>('all')
 const sideFilter = ref<Invitation['invitationSide']>('nha-trai')
 const dialog = ref<HTMLDialogElement>()
+const printDialog = ref<HTMLDialogElement>()
+const printItem = ref<Invitation | null>(null)
+const printCardRef = ref<{
+  downloadJpg: () => Promise<void>
+} | null>(null)
+const isExportingPrint = ref(false)
 const editingId = ref('')
 const isSentLocked = ref(false)
 const hasPersonalMessage = ref(false)
@@ -137,6 +143,21 @@ async function copyLink(item: Invitation) {
   }
   catch { window.prompt('Sao chép đường dẫn thiệp mời:', url) }
 }
+function openPrintPreview(item: Invitation) {
+  printItem.value = item
+  printDialog.value?.showModal()
+}
+async function downloadPrintCard() {
+  if (isExportingPrint.value || !printCardRef.value) return
+  isExportingPrint.value = true
+  try {
+    await printCardRef.value.downloadJpg()
+    message.value = `Đã xuất ảnh thiệp cứng cho ${printItem.value?.guestName || 'khách mời'}.`
+  }
+  finally {
+    isExportingPrint.value = false
+  }
+}
 </script>
 
 <template>
@@ -176,6 +197,7 @@ async function copyLink(item: Invitation) {
               <td><button type="button" class="sent-button" :class="{ sent: item.isSent }" :aria-pressed="item.isSent" :disabled="!!busyId || item.isSent" :title="item.isSent ? 'Thiệp đã gửi, không thể chuyển về chưa gửi' : 'Đánh dấu đã gửi'" @click="toggleSent(item)">{{ busyId === item.id ? 'Đang lưu...' : item.isSent ? 'Đã gửi ✓' : 'Chưa gửi' }}</button></td>
               <td><div class="row-actions">
                 <a :href="`/${encodeURIComponent(item.id)}`" target="_blank" rel="noopener">Mở thiệp ↗</a>
+                <button type="button" class="secondary icon-action" aria-label="Xuất thiệp cứng" title="Xuất thiệp cứng (JPG)" @click="openPrintPreview(item)"><ImageDown :size="18" aria-hidden="true" /></button>
                 <button type="button" class="secondary icon-action" aria-label="Sao chép link" title="Sao chép link" @click="copyLink(item)"><Copy :size="18" aria-hidden="true" /></button>
                 <button type="button" class="icon-action" aria-label="Sửa thiệp mời" title="Sửa thiệp mời" :disabled="!!busyId" @click="openForm(item)"><Pencil :size="18" aria-hidden="true" /></button>
                 <button type="button" class="danger icon-action" aria-label="Xóa thiệp mời" title="Xóa thiệp mời" :disabled="!!busyId" @click="remove(item)"><Trash2 :size="18" aria-hidden="true" /></button>
@@ -214,6 +236,25 @@ async function copyLink(item: Invitation) {
         <div class="actions"><button type="button" class="secondary" :disabled="saving" @click="dialog?.close()">Hủy</button><button type="submit" :disabled="saving">{{ saving ? 'Đang lưu...' : editingId ? 'Lưu thay đổi' : 'Tạo thiệp' }}</button></div>
       </form>
     </dialog>
+    <dialog ref="printDialog" class="print-dialog" aria-labelledby="print-card-title" @cancel="isExportingPrint && $event.preventDefault()">
+      <div class="dialog-header">
+        <h2 id="print-card-title">Xuất thiệp cứng — {{ printItem?.guestName }}</h2>
+        <button type="button" class="secondary" :disabled="isExportingPrint" aria-label="Đóng" @click="printDialog?.close()">×</button>
+      </div>
+      <div v-if="printItem" class="print-preview-wrap">
+        <InvitationPrintCard
+          ref="printCardRef"
+          :guest-name="printItem.guestName"
+          :invitation-side="printItem.invitationSide"
+          :inviter-role="printItem.inviterRole"
+          :delivery-type="printItem.deliveryType"
+        />
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" :disabled="isExportingPrint" @click="printDialog?.close()">Đóng</button>
+        <button type="button" :disabled="isExportingPrint" @click="downloadPrintCard">{{ isExportingPrint ? 'Đang xuất...' : 'Tải ảnh JPG' }}</button>
+      </div>
+    </dialog>
   </section>
 </template>
 
@@ -236,9 +277,9 @@ textarea { resize: vertical; }
 .inviter-options legend { font-weight: 700; padding: 0; }
 .inviter-options label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .inviter-options input { width: 18px; height: 18px; min-height: 0; padding: 0; margin: 0; accent-color: #6f3d34; }
-button, .row-actions a { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; padding: 8px 14px; border: 0; background: #6f3d34; color: #fff; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
+button, .row-actions a, .secondary-link { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; padding: 8px 14px; border: 0; background: #6f3d34; color: #fff; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; white-space: nowrap; }
 button:disabled { opacity: .6; cursor: not-allowed; }
-.secondary, .sent-button { background: #efe4db; color: #6f3d34; }
+.secondary, .sent-button, .secondary-link, .row-actions a.secondary-link { background: #efe4db; color: #6f3d34; }
 .sent-button.sent { background: #e6efdf; color: #42643b; }
 .sent-button.sent:disabled { opacity: 1; cursor: default; }
 .danger { background: #9f3f34; }
@@ -246,6 +287,8 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 table { width: 100%; min-width: 960px; border-collapse: collapse; }
 th, td { padding: 14px; text-align: left; vertical-align: top; border-bottom: 1px solid #eadfd7; }
 th { background: #f1e8df; color: #5a514c; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; }
+tbody tr { transition: background-color .15s ease; }
+tbody tr:hover { background: #f6ede4; }
 td { overflow-wrap: anywhere; }
 .note { white-space: pre-wrap; max-width: 240px; }
 .row-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; }
@@ -256,6 +299,8 @@ td { overflow-wrap: anywhere; }
 .empty { text-align: center; padding: 36px 16px; color: #786a60; }
 .error { color: #9f3f34; font-weight: 700; }
 dialog { width: min(560px, calc(100% - 32px)); max-height: calc(100dvh - 40px); box-sizing: border-box; padding: 24px; border: 1px solid #e2d4c9; background: #fffdf9; color: #2d2926; overflow-y: auto; }
+dialog.print-dialog { width: min(600px, calc(100% - 32px)); }
+.print-preview-wrap { margin: 16px 0; }
 dialog::backdrop { background: rgb(35 26 22 / .55); }
 form { display: grid; gap: 18px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

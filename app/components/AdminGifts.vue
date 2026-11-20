@@ -287,6 +287,8 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 table { width: 100%; min-width: 780px; border-collapse: collapse; }
 th, td { padding: 14px; text-align: left; vertical-align: middle; border-bottom: 1px solid #eadfd7; }
 th { background: #f1e8df; color: #5a514c; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; }
+tbody tr { transition: background-color .15s ease; }
+tbody tr:hover { background: #f6ede4; }
 td { overflow-wrap: anywhere; }
 .note { white-space: pre-wrap; max-width: 260px; }
 .amount { font-weight: 800; color: #2f5228; white-space: nowrap; }

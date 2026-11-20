@@ -858,6 +858,14 @@ th {
   text-transform: uppercase;
 }
 
+tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+tbody tr:hover {
+  background: #f6ede4;
+}
+
 td strong,
 td small {
   display: block;
