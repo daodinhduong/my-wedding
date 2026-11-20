@@ -248,9 +248,20 @@ function setLetterSpacing(ctx: CanvasRenderingContext2D, spacing: string) {
   }
 }
 
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = () => resolve(null)
+    img.src = src
+  })
+}
+
 async function renderCardCanvas(): Promise<HTMLCanvasElement | null> {
   if (typeof document === 'undefined') return null
   await document.fonts?.ready
+  const logoImg = await loadImage('/logo/dh-wedding-logo.png')
 
   const canvas = document.createElement('canvas')
   canvas.width = CARD_W
@@ -300,11 +311,16 @@ async function renderCardCanvas(): Promise<HTMLCanvasElement | null> {
   ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
 
-  // DH monogram
+  // DH logo image (fallback to text monogram)
   setLetterSpacing(ctx, '0px')
-  ctx.fillStyle = '#7a552f'
-  ctx.font = 'italic 600 110px "Playfair Display", "Cormorant Garamond", Georgia, serif'
-  ctx.fillText('DH', CX, 200)
+  if (logoImg) {
+    ctx.drawImage(logoImg, CX - 110, 40, 220, 220)
+  }
+  else {
+    ctx.fillStyle = '#7a552f'
+    ctx.font = 'italic 600 110px "Playfair Display", "Cormorant Garamond", Georgia, serif'
+    ctx.fillText('DH', CX, 200)
+  }
 
   // Subtitle
   ctx.fillStyle = '#8d755c'
@@ -605,8 +621,15 @@ defineExpose({ downloadJpg })
       <use href="#floralSpray" x="84" y="88" />
       <use href="#floralSpray" transform="translate(1116,1662) scale(-1,-1)" />
 
-      <!-- Header monogram -->
-      <text x="600" y="200" text-anchor="middle" class="svg-monogram">DH</text>
+      <!-- Header logo -->
+      <image
+        href="/logo/dh-wedding-logo.png"
+        x="490"
+        y="40"
+        width="220"
+        height="220"
+        preserveAspectRatio="xMidYMid meet"
+      />
       <text x="600" y="246" text-anchor="middle" class="svg-subtitle">{{ cardTitle }}</text>
 
       <!-- Family block -->
