@@ -25,7 +25,7 @@ type CreateResponseForm = {
 
 const password = ref('')
 const authenticatedPassword = ref('')
-const activeTab = ref<'responses' | 'gallery' | 'invitations' | 'gifts' | 'schedule'>('responses')
+const activeTab = ref<'responses' | 'gallery' | 'invitations' | 'gifts' | 'expenses' | 'schedule'>('responses')
 const isUnlocked = ref(false)
 const isLoading = ref(false)
 const isCreateDialogOpen = ref(false)
@@ -356,6 +356,7 @@ function formatCreatedAt(value: string) {
         <button type="button" role="tab" :aria-selected="activeTab === 'gallery'" :class="{ active: activeTab === 'gallery' }" @click="activeTab = 'gallery'">Album ảnh</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'invitations'" :class="{ active: activeTab === 'invitations' }" @click="activeTab = 'invitations'">Thiệp mời</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'gifts'" :class="{ active: activeTab === 'gifts' }" @click="activeTab = 'gifts'">Tiền mừng</button>
+        <button type="button" role="tab" :aria-selected="activeTab === 'expenses'" :class="{ active: activeTab === 'expenses' }" @click="activeTab = 'expenses'">Chi tiêu</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'schedule'" :class="{ active: activeTab === 'schedule' }" @click="activeTab = 'schedule'">Lịch trình</button>
       </div>
       <KeepAlive>
@@ -369,6 +370,9 @@ function formatCreatedAt(value: string) {
       </KeepAlive>
       <KeepAlive>
         <AdminGifts v-if="activeTab === 'gifts'" :admin-password="authenticatedPassword" />
+      </KeepAlive>
+      <KeepAlive>
+        <AdminExpenses v-if="activeTab === 'expenses'" :admin-password="authenticatedPassword" />
       </KeepAlive>
       <div v-if="activeTab === 'responses'" class="responses-panel" role="tabpanel">
       <header class="admin-header">

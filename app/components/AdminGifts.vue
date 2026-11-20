@@ -10,6 +10,7 @@ type Invitation = {
   twoMeals: boolean
   giftType: 'cash' | 'other' | null
   giftAmount: number | null
+  giftNote: string | null
   isSent: boolean
   deliveryType: 'invitation' | 'announcement'
   invitationSide: 'nha-trai' | 'nha-gai'
@@ -32,7 +33,7 @@ const editingItem = ref<Invitation | null>(null)
 const form = reactive({
   giftType: 'cash' as 'cash' | 'other',
   giftAmount: '',
-  note: ''
+  giftNote: ''
 })
 
 const currencyFormatter = new Intl.NumberFormat('vi-VN')
@@ -73,7 +74,7 @@ function isGifted(item: Invitation) {
 const filtered = computed(() => invitations.value.filter((item) => {
   const keyword = search.value.trim().toLocaleLowerCase('vi')
   const gifted = isGifted(item)
-  return (!keyword || `${item.guestName} ${item.note || ''}`.toLocaleLowerCase('vi').includes(keyword))
+  return (!keyword || `${item.guestName} ${item.giftNote || ''}`.toLocaleLowerCase('vi').includes(keyword))
     && (inviterFilter.value === 'all' || item.inviterRole === inviterFilter.value)
     && (giftFilter.value === 'all' || (giftFilter.value === 'has_gift' ? gifted : !gifted))
     && item.invitationSide === sideFilter.value
@@ -112,7 +113,7 @@ function openEdit(item: Invitation) {
   editingItem.value = item
   form.giftType = item.giftType || 'cash'
   form.giftAmount = formatAmountInput(item.giftAmount)
-  form.note = item.note || ''
+  form.giftNote = item.giftNote || ''
   formError.value = ''
   dialog.value?.showModal()
 }
@@ -136,9 +137,10 @@ async function save() {
         deliveryType: current.deliveryType,
         invitationSide: current.invitationSide,
         isSent: current.isSent,
-        note: form.note,
+        note: current.note || '',
         giftType,
-        giftAmount
+        giftAmount,
+        giftNote: form.giftNote
       }
     })
     invitations.value = invitations.value.map(old => old.id === updated.id ? updated : old)
@@ -216,7 +218,7 @@ async function save() {
               <td><strong>{{ item.guestName }}</strong></td>
               <td>{{ item.inviterRole === 'parents' ? 'Bố mẹ' : 'Cô dâu & chú rể' }}</td>
               <td>{{ item.invitationSide === 'nha-trai' ? 'Nhà trai' : 'Nhà gái' }}</td>
-              <td class="note">{{ item.note || '—' }}</td>
+              <td class="note">{{ item.giftNote || '—' }}</td>
               <td>
                 <span v-if="item.giftType === 'other'" class="other-tag">Khác</span>
                 <span v-else class="amount" :class="{ empty: item.giftAmount === null }">{{ formatCurrency(item.giftAmount) }}</span>
@@ -249,8 +251,8 @@ async function save() {
         </label>
         <p v-if="form.giftType === 'other'" class="hint">Không cần nhập số tiền — ghi chi tiết vào ô Ghi chú bên dưới.</p>
         <label>
-          Ghi chú
-          <textarea v-model="form.note" rows="3" maxlength="2000" :placeholder="form.giftType === 'other' ? 'Ví dụ: 1 chỉ vàng...' : ''" />
+          Ghi chú tiền mừng
+          <textarea v-model="form.giftNote" rows="3" maxlength="2000" :placeholder="form.giftType === 'other' ? 'Ví dụ: 1 chỉ vàng...' : 'Ghi chú riêng cho tiền mừng (nếu có)'" />
         </label>
         <p v-if="formError" class="error" role="alert">{{ formError }}</p>
         <div class="actions">

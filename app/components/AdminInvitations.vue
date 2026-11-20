@@ -10,6 +10,7 @@ type Invitation = {
   twoMeals: boolean
   giftType: 'cash' | 'other' | null
   giftAmount: number | null
+  giftNote: string | null
   isSent: boolean
   deliveryType: 'invitation' | 'announcement'
   invitationSide: 'nha-trai' | 'nha-gai'
@@ -37,7 +38,7 @@ const isExportingPrint = ref(false)
 const editingId = ref('')
 const isSentLocked = ref(false)
 const hasPersonalMessage = ref(false)
-const form = reactive({ twoMeals: false, giftType: 'cash' as 'cash' | 'other', giftAmount: '', inviterRole: 'couple' as Invitation['inviterRole'], guestName: '', note: '', personalMessage: '', isSent: false, deliveryType: 'invitation' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
+const form = reactive({ twoMeals: false, giftType: 'cash' as 'cash' | 'other', giftAmount: '', giftNote: '', inviterRole: 'couple' as Invitation['inviterRole'], guestName: '', note: '', personalMessage: '', isSent: false, deliveryType: 'invitation' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
 const amountFormatter = new Intl.NumberFormat('vi-VN')
 function formatAmountInput(value: string | number | null | undefined): string {
   const digits = String(value ?? '').replace(/\D/g, '')
@@ -87,7 +88,7 @@ function openForm(item?: Invitation) {
   form.personalMessage = item?.personalMessage || ''
   hasPersonalMessage.value = !!form.personalMessage.trim()
   isSentLocked.value = item?.isSent === true
-  Object.assign(form, { twoMeals: item?.twoMeals ?? false, giftType: item?.giftType || 'cash', giftAmount: formatAmountInput(item?.giftAmount), inviterRole: item?.inviterRole || (inviterFilter.value === 'parents' ? 'parents' : 'couple'), guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || sideFilter.value })
+  Object.assign(form, { twoMeals: item?.twoMeals ?? false, giftType: item?.giftType || 'cash', giftAmount: formatAmountInput(item?.giftAmount), giftNote: item?.giftNote || '', inviterRole: item?.inviterRole || (inviterFilter.value === 'parents' ? 'parents' : 'couple'), guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || sideFilter.value })
   formError.value = ''
   dialog.value?.showModal()
 }
@@ -118,7 +119,7 @@ async function toggleSent(item: Invitation) {
   busyId.value = item.id
   error.value = ''
   try {
-    const updated = await $fetch<Invitation>(`/api/admin/invitations/${item.id}`, { method: 'PATCH', headers: headers(), body: { ...item, note: item.note || '', isSent: true } })
+    const updated = await $fetch<Invitation>(`/api/admin/invitations/${item.id}`, { method: 'PATCH', headers: headers(), body: { ...item, note: item.note || '', giftNote: item.giftNote || '', isSent: true } })
     Object.assign(item, updated)
   }
   catch (cause) { error.value = errorText(cause) }
@@ -227,7 +228,7 @@ async function downloadPrintCard() {
           <label><input v-model="form.giftType" type="radio" value="other">Khác</label>
         </fieldset>
         <label v-if="editingId && form.giftType === 'cash'">Tiền mừng cưới (VNĐ)<input v-model="formattedGiftAmount" type="text" inputmode="numeric" placeholder="Ví dụ: 500.000" @input="onGiftAmountInput"></label>
-        <p v-if="editingId && form.giftType === 'other'" class="hint">Không cần nhập số tiền — ghi chi tiết (vd: tặng vàng...) vào ô Ghi chú nội bộ bên dưới.</p>
+        <label v-if="editingId">Ghi chú tiền mừng<textarea v-model="form.giftNote" rows="2" maxlength="2000" :placeholder="form.giftType === 'other' ? 'Ví dụ: 1 chỉ vàng...' : 'Ghi chú riêng cho tiền mừng (nếu có)'" /></label>
         <label class="message-toggle"><input v-model="form.twoMeals" type="checkbox">Đi ăn 2 bữa</label>
         <label class="message-toggle"><input v-model="hasPersonalMessage" type="checkbox" aria-controls="personal-message-input" :aria-expanded="hasPersonalMessage">Lời nhắn riêng</label>
         <label v-if="hasPersonalMessage" for="personal-message-input">Nội dung lời nhắn<textarea id="personal-message-input" v-model="form.personalMessage" rows="3" maxlength="2000" /></label>

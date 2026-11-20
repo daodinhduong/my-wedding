@@ -44,5 +44,9 @@ export function validateInvitation(body: Record<string, unknown>) {
     giftAmount = parsed
     if (!giftType) giftType = 'cash'
   }
-  return { twoMeals: body.twoMeals === true, giftType, giftAmount, senderName, inviterRole, guestName, note: note || null, personalMessage: personalMessage || null, deliveryType: body.deliveryType, invitationSide: body.invitationSide, isSent: body.isSent }
+  const giftNote = typeof body.giftNote === 'string' ? body.giftNote.trim() : ''
+  if ((body.giftNote !== undefined && body.giftNote !== null && typeof body.giftNote !== 'string') || giftNote.length > 2000) {
+    throw createError({ statusCode: 400, statusMessage: 'Ghi chu tien mung toi da 2000 ky tu.' })
+  }
+  return { twoMeals: body.twoMeals === true, giftType, giftAmount, giftNote: giftNote || null, senderName, inviterRole, guestName, note: note || null, personalMessage: personalMessage || null, deliveryType: body.deliveryType, invitationSide: body.invitationSide, isSent: body.isSent }
 }

@@ -64,6 +64,7 @@ model Invitation {
   twoMeals Boolean @default(false) @map("two_meals")
   giftType       String?  @map("gift_type")
   giftAmount     Int?     @map("gift_amount")
+  giftNote       String?  @map("gift_note")
   isSent         Boolean  @default(false) @map("is_sent")
   deliveryType   String   @default("invitation") @map("delivery_type")
   invitationSide String   @default("nha-trai") @map("invitation_side")
@@ -73,4 +74,18 @@ model Invitation {
 
   @@index([createdAt(sort: Desc)])
   @@map("invitations")
+}
+
+model WeddingExpense {
+  id        String   @id @default(uuid())
+  title     String
+  amount    Int
+  side      String   @default("nha-trai")
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([side])
+  @@map("wedding_expenses")
 }
