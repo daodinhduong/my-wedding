@@ -12,7 +12,17 @@ export default defineEventHandler(async (event) => {
   try {
     return await prisma.invitation.update({
       where: { id, ...(!data.isSent ? { isSent: false } : {}) },
-      data
+      data,
+      include: {
+        response: {
+          select: {
+            attendanceStatus: true,
+            guestCount: true,
+            attendRehearsal: true,
+            attendCeremony: true
+          }
+        }
+      }
     })
   }
   catch (error) {

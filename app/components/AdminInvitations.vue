@@ -15,6 +15,12 @@ type Invitation = {
   deliveryType: 'invitation' | 'announcement'
   invitationSide: 'nha-trai' | 'nha-gai'
   createdAt: string
+  response?: {
+    attendanceStatus: 'attending' | 'not_attending' | 'pending'
+    guestCount: number
+    attendRehearsal: boolean
+    attendCeremony: boolean
+  } | null
 }
 const props = defineProps<{ adminPassword: string }>()
 const invitations = ref<Invitation[]>([])
@@ -38,28 +44,7 @@ const isExportingPrint = ref(false)
 const editingId = ref('')
 const isSentLocked = ref(false)
 const hasPersonalMessage = ref(false)
-const form = reactive({ twoMeals: false, giftType: 'cash' as 'cash' | 'other', giftAmount: '', giftNote: '', inviterRole: 'couple' as Invitation['inviterRole'], guestName: '', note: '', personalMessage: '', isSent: false, deliveryType: 'invitation' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
-const amountFormatter = new Intl.NumberFormat('vi-VN')
-function formatAmountInput(value: string | number | null | undefined): string {
-  const digits = String(value ?? '').replace(/\D/g, '')
-  return digits ? amountFormatter.format(Number(digits)) : ''
-}
-function parseAmountInput(value: string | number | null | undefined): number | null {
-  const digits = String(value ?? '').replace(/\D/g, '')
-  return digits ? Number(digits) : null
-}
-function onGiftAmountInput(event: Event) {
-  const input = event.target as HTMLInputElement
-  const formatted = formatAmountInput(input.value)
-  form.giftAmount = formatted
-  input.value = formatted
-}
-const formattedGiftAmount = computed({
-  get: () => formatAmountInput(form.giftAmount),
-  set: (value: string) => {
-    form.giftAmount = formatAmountInput(value)
-  }
-})
+const form = reactive({ twoMeals: false, giftType: null as Invitation['giftType'], giftAmount: null as Invitation['giftAmount'], giftNote: '', inviterRole: 'couple' as Invitation['inviterRole'], guestName: '', note: '', personalMessage: '', isSent: false, deliveryType: 'invitation' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
 const deliveryLabels = { invitation: 'Thiệp mời', announcement: 'Thiệp báo hỷ' }
 const filtered = computed(() => invitations.value.filter((item) => {
   const keyword = search.value.trim().toLocaleLowerCase('vi')
@@ -68,7 +53,14 @@ const filtered = computed(() => invitations.value.filter((item) => {
     && (inviterFilter.value === 'all' || item.inviterRole === inviterFilter.value)
     && item.invitationSide === sideFilter.value
 }))
-const sentCount = computed(() => filtered.value.filter(item => item.isSent).length)
+const rehearsalGuestCount = computed(() => filtered.value.reduce((sum, item) => {
+  if (item.response?.attendanceStatus !== 'attending') return sum
+  return item.response.attendRehearsal ? sum + item.response.guestCount : sum
+}, 0))
+const ceremonyGuestCount = computed(() => filtered.value.reduce((sum, item) => {
+  if (item.response?.attendanceStatus !== 'attending') return sum
+  return (item.response.attendCeremony || !item.response.attendRehearsal) ? sum + item.response.guestCount : sum
+}, 0))
 function headers() { return { 'x-admin-password': props.adminPassword } }
 function errorText(cause: unknown) {
   const value = cause as { data?: { statusMessage?: string }; message?: string }
@@ -88,7 +80,7 @@ function openForm(item?: Invitation) {
   form.personalMessage = item?.personalMessage || ''
   hasPersonalMessage.value = !!form.personalMessage.trim()
   isSentLocked.value = item?.isSent === true
-  Object.assign(form, { twoMeals: item?.twoMeals ?? false, giftType: item?.giftType || 'cash', giftAmount: formatAmountInput(item?.giftAmount), giftNote: item?.giftNote || '', inviterRole: item?.inviterRole || (inviterFilter.value === 'parents' ? 'parents' : 'couple'), guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || sideFilter.value })
+  Object.assign(form, { twoMeals: item?.twoMeals ?? false, giftType: item?.giftType ?? null, giftAmount: item?.giftAmount ?? null, giftNote: item?.giftNote || '', inviterRole: item?.inviterRole || (inviterFilter.value === 'parents' ? 'parents' : 'couple'), guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || sideFilter.value })
   formError.value = ''
   dialog.value?.showModal()
 }
@@ -97,10 +89,8 @@ async function save() {
   saving.value = true
   formError.value = ''
   try {
-    const giftAmount = form.giftType === 'cash' ? parseAmountInput(form.giftAmount) : null
-    const giftType = form.giftType === 'other' ? 'other' : (giftAmount !== null ? 'cash' : null)
     const item = await $fetch<Invitation>(editingId.value ? `/api/admin/invitations/${editingId.value}` : '/api/admin/invitations', {
-      method: editingId.value ? 'PATCH' : 'POST', headers: headers(), body: { ...form, giftType, giftAmount, personalMessage: hasPersonalMessage.value ? form.personalMessage : '' }
+      method: editingId.value ? 'PATCH' : 'POST', headers: headers(), body: { ...form, personalMessage: hasPersonalMessage.value ? form.personalMessage : '' }
     })
     if (editingId.value) invitations.value = invitations.value.map(old => old.id === item.id ? item : old)
     else invitations.value.unshift(item)
@@ -167,8 +157,8 @@ async function downloadPrintCard() {
       <div><p class="eyebrow">Admin</p><h1>Danh sách thiệp mời</h1></div>
       <div class="actions">
         <span class="badge">{{ filtered.length }} thiệp</span>
-        <span class="badge">{{ sentCount }} đã gửi</span>
-        <span class="badge">{{ filtered.length - sentCount }} chưa gửi</span>
+        <span class="badge">Áp rạp: {{ rehearsalGuestCount }} người</span>
+        <span class="badge">Bữa chính: {{ ceremonyGuestCount }} người</span>
         <button type="button" @click="openForm()">Thêm mới</button>
       </div>
     </header>
@@ -222,13 +212,6 @@ async function downloadPrintCard() {
           <label>Hình thức<select v-model="form.deliveryType"><option value="invitation">Thiệp mời</option><option value="announcement">Thiệp báo hỷ</option></select></label>
         </div>
         <label v-if="editingId">Trạng thái<select v-model="form.isSent" :disabled="isSentLocked"><option :value="false">Chưa gửi</option><option :value="true">Đã gửi</option></select></label>
-        <fieldset v-if="editingId" class="inviter-options">
-          <legend>Hình thức mừng</legend>
-          <label><input v-model="form.giftType" type="radio" value="cash">Tiền mặt</label>
-          <label><input v-model="form.giftType" type="radio" value="other">Khác</label>
-        </fieldset>
-        <label v-if="editingId && form.giftType === 'cash'">Tiền mừng cưới (VNĐ)<input v-model="formattedGiftAmount" type="text" inputmode="numeric" placeholder="Ví dụ: 500.000" @input="onGiftAmountInput"></label>
-        <label v-if="editingId">Ghi chú tiền mừng<textarea v-model="form.giftNote" rows="2" maxlength="2000" :placeholder="form.giftType === 'other' ? 'Ví dụ: 1 chỉ vàng...' : 'Ghi chú riêng cho tiền mừng (nếu có)'" /></label>
         <label class="message-toggle"><input v-model="form.twoMeals" type="checkbox">Đi ăn 2 bữa</label>
         <label class="message-toggle"><input v-model="hasPersonalMessage" type="checkbox" aria-controls="personal-message-input" :aria-expanded="hasPersonalMessage">Lời nhắn riêng</label>
         <label v-if="hasPersonalMessage" for="personal-message-input">Nội dung lời nhắn<textarea id="personal-message-input" v-model="form.personalMessage" rows="3" maxlength="2000" /></label>

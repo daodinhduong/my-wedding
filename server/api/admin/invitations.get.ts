@@ -4,5 +4,17 @@ import { prisma } from '../../utils/db'
 
 export default defineEventHandler((event) => {
   assertAdminPassword(event)
-  return prisma.invitation.findMany({ orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] })
+  return prisma.invitation.findMany({
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    include: {
+      response: {
+        select: {
+          attendanceStatus: true,
+          guestCount: true,
+          attendRehearsal: true,
+          attendCeremony: true
+        }
+      }
+    }
+  })
 })

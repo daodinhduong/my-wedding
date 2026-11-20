@@ -25,7 +25,7 @@ type CreateResponseForm = {
 
 const password = ref('')
 const authenticatedPassword = ref('')
-const activeTab = ref<'responses' | 'gallery' | 'invitations' | 'gifts' | 'expenses' | 'schedule'>('responses')
+const activeTab = ref<'invitations' | 'responses' | 'gallery' | 'gifts' | 'expenses' | 'schedule'>('invitations')
 const isUnlocked = ref(false)
 const isLoading = ref(false)
 const isCreateDialogOpen = ref(false)
@@ -39,11 +39,12 @@ const responses = ref<AdminWeddingResponse[]>([])
 const sideFilter = ref<'all' | 'nha-trai' | 'nha-gai' | 'unassigned'>('all')
 const inviterFilter = ref<'all' | 'couple' | 'parents' | 'unassigned'>('all')
 const filteredResponses = computed(() => responses.value.filter((item) => {
+  const hasWish = Boolean(item.wishMessage?.trim())
   const matchesSide = sideFilter.value === 'all'
     || (sideFilter.value === 'unassigned' ? item.invitationSide === null : item.invitationSide === sideFilter.value)
   const matchesInviter = inviterFilter.value === 'all'
     || (inviterFilter.value === 'unassigned' ? item.inviterRole === null : item.inviterRole === inviterFilter.value)
-  return matchesSide && matchesInviter
+  return hasWish && matchesSide && matchesInviter
 }))
 const updatingIds = ref(new Set<string>())
 const deletingIds = ref(new Set<string>())
@@ -352,9 +353,9 @@ function formatCreatedAt(value: string) {
 
     <section v-else class="admin-shell">
       <div class="admin-tabs" role="tablist" aria-label="Quản lý">
+        <button type="button" role="tab" :aria-selected="activeTab === 'invitations'" :class="{ active: activeTab === 'invitations' }" @click="activeTab = 'invitations'">Thiệp mời</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'responses'" :class="{ active: activeTab === 'responses' }" @click="activeTab = 'responses'">Phản hồi</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'gallery'" :class="{ active: activeTab === 'gallery' }" @click="activeTab = 'gallery'">Album ảnh</button>
-        <button type="button" role="tab" :aria-selected="activeTab === 'invitations'" :class="{ active: activeTab === 'invitations' }" @click="activeTab = 'invitations'">Thiệp mời</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'gifts'" :class="{ active: activeTab === 'gifts' }" @click="activeTab = 'gifts'">Tiền mừng</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'expenses'" :class="{ active: activeTab === 'expenses' }" @click="activeTab = 'expenses'">Chi tiêu</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'schedule'" :class="{ active: activeTab === 'schedule' }" @click="activeTab = 'schedule'">Lịch trình</button>
@@ -383,13 +384,6 @@ function formatCreatedAt(value: string) {
 
         <div class="admin-actions">
           <span>{{ filteredResponses.length }} bản ghi</span>
-          <span>{{ pendingCount }} chờ duyệt</span>
-          <span>{{ approvedCount }} đã duyệt</span>
-          <span>{{ approvedGuestCount }} khách đã duyệt</span>
-          <span>Tổng người tham gia: {{ attendingGuestCount }}</span>
-          <button type="button" @click="openCreateDialog">
-            Thêm mới
-          </button>
         </div>
       </header>
 
@@ -425,17 +419,14 @@ function formatCreatedAt(value: string) {
               <th>Khách</th>
               <th>Lời chúc</th>
               <th>Tham dự</th>
-              <th>Số người</th>
-              <th>Bữa tham dự</th>
               <th>Bên mời</th>
-              <th>Nguồn</th>
               <th>Ngày gửi</th>
               <th>Hiển thị</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="!filteredResponses.length">
-              <td colspan="10" class="empty-state">Không có phản hồi trong bộ lọc này.</td>
+              <td colspan="7" class="empty-state">Không có phản hồi trong bộ lọc này.</td>
             </tr>
             <tr v-for="(response, index) in filteredResponses" :key="response.id">
               <td>{{ index + 1 }}</td>
@@ -444,21 +435,10 @@ function formatCreatedAt(value: string) {
                 <small>{{ formatGuestMeta(response) }}</small>
               </td>
               <td class="wish-cell">
-                {{ response.wishMessage || 'Không có lời chúc' }}
+                {{ response.wishMessage }}
               </td>
               <td>{{ formatAttendance(response.attendanceStatus) }}</td>
-              <td>{{ response.guestCount }}</td>
-              <td>
-                <div v-if="response.attendRehearsal">Áp rạp tối {{ response.invitationSide === 'nha-gai' ? '27' : '28' }}/11</div>
-                <div v-if="response.attendCeremony">{{ response.invitationSide === 'nha-gai' ? 'Vu quy 28/11' : 'Thành hôn 29/11' }}</div>
-                <span v-if="!response.attendRehearsal && !response.attendCeremony">—</span>
-              </td>
               <td>{{ formatInvitationSide(response.invitationSide) }}</td>
-              <td>
-                <span class="source-badge" :class="`is-${response.responseSource}`">
-                  {{ formatResponseSource(response.responseSource) }}
-                </span>
-              </td>
               <td>{{ formatCreatedAt(response.createdAt) }}</td>
               <td>
                 <div class="row-actions">

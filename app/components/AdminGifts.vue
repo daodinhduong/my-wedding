@@ -15,6 +15,12 @@ type Invitation = {
   deliveryType: 'invitation' | 'announcement'
   invitationSide: 'nha-trai' | 'nha-gai'
   createdAt: string
+  response?: {
+    attendanceStatus: 'attending' | 'not_attending' | 'pending'
+    guestCount: number
+    attendRehearsal: boolean
+    attendCeremony: boolean
+  } | null
 }
 
 const props = defineProps<{ adminPassword: string }>()
@@ -81,6 +87,9 @@ const filtered = computed(() => invitations.value.filter((item) => {
 }))
 
 const giftedCount = computed(() => filtered.value.filter(isGifted).length)
+const attendingGuestCount = computed(() => filtered.value.reduce((sum, item) => {
+  return item.response?.attendanceStatus === 'attending' ? sum + item.response.guestCount : sum
+}, 0))
 const totalGiftAmount = computed(() => filtered.value.reduce((sum, item) => sum + (item.giftType === 'other' ? 0 : (item.giftAmount ?? 0)), 0))
 
 function headers() {
@@ -165,6 +174,7 @@ async function save() {
       </div>
       <div class="actions">
         <span class="badge">{{ filtered.length }} thiệp</span>
+        <span class="badge">Tổng người tham gia: {{ attendingGuestCount }}</span>
         <span class="badge">{{ giftedCount }} đã gửi tiền mừng</span>
         <span class="badge total">Tổng: {{ formatCurrency(totalGiftAmount) }}</span>
       </div>
@@ -204,20 +214,28 @@ async function save() {
             <th>Tên khách mời</th>
             <th>Người đứng lời mời</th>
             <th>Bên mời</th>
+            <th>Số người</th>
+            <th>Bữa tham dự</th>
             <th>Ghi chú</th>
             <th>Tiền mừng</th>
             <th>Thao tác</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="7" class="empty">Đang tải danh sách tiền mừng...</td></tr>
-          <tr v-else-if="!filtered.length"><td colspan="7" class="empty">{{ invitations.length ? 'Không có thiệp phù hợp với bộ lọc.' : 'Chưa có thiệp mời nào.' }}</td></tr>
+          <tr v-if="loading"><td colspan="9" class="empty">Đang tải danh sách tiền mừng...</td></tr>
+          <tr v-else-if="!filtered.length"><td colspan="9" class="empty">{{ invitations.length ? 'Không có thiệp phù hợp với bộ lọc.' : 'Chưa có thiệp mời nào.' }}</td></tr>
           <template v-else>
             <tr v-for="(item, index) in filtered" :key="item.id">
               <td>{{ index + 1 }}</td>
               <td><strong>{{ item.guestName }}</strong></td>
               <td>{{ item.inviterRole === 'parents' ? 'Bố mẹ' : 'Cô dâu & chú rể' }}</td>
               <td>{{ item.invitationSide === 'nha-trai' ? 'Nhà trai' : 'Nhà gái' }}</td>
+              <td>{{ item.response?.attendanceStatus === 'attending' ? item.response.guestCount : '—' }}</td>
+              <td class="meals">
+                <div v-if="item.response?.attendRehearsal">Áp rạp tối {{ item.invitationSide === 'nha-gai' ? '27' : '28' }}/11</div>
+                <div v-if="item.response?.attendCeremony">{{ item.invitationSide === 'nha-gai' ? 'Vu quy 28/11' : 'Thành hôn 29/11' }}</div>
+                <span v-if="!item.response?.attendRehearsal && !item.response?.attendCeremony">—</span>
+              </td>
               <td class="note">{{ item.giftNote || '—' }}</td>
               <td>
                 <span v-if="item.giftType === 'other'" class="other-tag">Khác</span>
