@@ -25,7 +25,7 @@ type CreateResponseForm = {
 
 const password = ref('')
 const authenticatedPassword = ref('')
-const activeTab = ref<'responses' | 'gallery' | 'invitations' | 'schedule'>('responses')
+const activeTab = ref<'responses' | 'gallery' | 'invitations' | 'gifts' | 'schedule'>('responses')
 const isUnlocked = ref(false)
 const isLoading = ref(false)
 const isCreateDialogOpen = ref(false)
@@ -355,6 +355,7 @@ function formatCreatedAt(value: string) {
         <button type="button" role="tab" :aria-selected="activeTab === 'responses'" :class="{ active: activeTab === 'responses' }" @click="activeTab = 'responses'">Phản hồi</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'gallery'" :class="{ active: activeTab === 'gallery' }" @click="activeTab = 'gallery'">Album ảnh</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'invitations'" :class="{ active: activeTab === 'invitations' }" @click="activeTab = 'invitations'">Thiệp mời</button>
+        <button type="button" role="tab" :aria-selected="activeTab === 'gifts'" :class="{ active: activeTab === 'gifts' }" @click="activeTab = 'gifts'">Tiền mừng</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'schedule'" :class="{ active: activeTab === 'schedule' }" @click="activeTab = 'schedule'">Lịch trình</button>
       </div>
       <KeepAlive>
@@ -365,6 +366,9 @@ function formatCreatedAt(value: string) {
       </KeepAlive>
       <KeepAlive>
         <AdminInvitations v-if="activeTab === 'invitations'" :admin-password="authenticatedPassword" />
+      </KeepAlive>
+      <KeepAlive>
+        <AdminGifts v-if="activeTab === 'gifts'" :admin-password="authenticatedPassword" />
       </KeepAlive>
       <div v-if="activeTab === 'responses'" class="responses-panel" role="tabpanel">
       <header class="admin-header">
@@ -490,7 +494,6 @@ function formatCreatedAt(value: string) {
         v-if="isCreateDialogOpen"
         class="modal-backdrop"
         role="presentation"
-        @click.self="closeCreateDialog"
       >
         <section
           class="create-dialog"
@@ -580,7 +583,6 @@ function formatCreatedAt(value: string) {
         v-if="isEditDialogOpen"
         class="modal-backdrop"
         role="presentation"
-        @click.self="closeEditDialog"
       >
         <section
           class="create-dialog"

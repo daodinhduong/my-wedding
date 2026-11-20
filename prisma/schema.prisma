@@ -62,6 +62,8 @@ model Invitation {
   guestName      String   @map("guest_name")
   note           String?
   twoMeals Boolean @default(false) @map("two_meals")
+  giftType       String?  @map("gift_type")
+  giftAmount     Int?     @map("gift_amount")
   isSent         Boolean  @default(false) @map("is_sent")
   deliveryType   String   @default("invitation") @map("delivery_type")
   invitationSide String   @default("nha-trai") @map("invitation_side")

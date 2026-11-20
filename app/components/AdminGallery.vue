@@ -200,7 +200,7 @@ async function deleteImage(image: GalleryImage) {
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <p v-if="message" role="status">{{ message }}</p>
     </div>
-    <dialog ref="previewDialog" class="image-preview-dialog" aria-label="Xem ảnh phóng to" @close="previewImage = null" @click="($event.target === previewDialog) && previewDialog?.close()">
+    <dialog ref="previewDialog" class="image-preview-dialog" aria-label="Xem ảnh phóng to" @close="previewImage = null">
       <div v-if="previewImage" class="image-preview-content">
         <button type="button" class="preview-close" aria-label="Đóng ảnh phóng to" autofocus @click="previewDialog?.close()">Đóng ×</button>
         <img :src="previewImage.url" :alt="previewImage.key">

@@ -8,6 +8,8 @@ type Invitation = {
   note: string | null
   personalMessage: string | null
   twoMeals: boolean
+  giftType: 'cash' | 'other' | null
+  giftAmount: number | null
   isSent: boolean
   deliveryType: 'invitation' | 'announcement'
   invitationSide: 'nha-trai' | 'nha-gai'
@@ -29,7 +31,28 @@ const dialog = ref<HTMLDialogElement>()
 const editingId = ref('')
 const isSentLocked = ref(false)
 const hasPersonalMessage = ref(false)
-const form = reactive({ twoMeals: false, inviterRole: 'couple' as Invitation['inviterRole'], guestName: '', note: '', personalMessage: '', isSent: false, deliveryType: 'invitation' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
+const form = reactive({ twoMeals: false, giftType: 'cash' as 'cash' | 'other', giftAmount: '', inviterRole: 'couple' as Invitation['inviterRole'], guestName: '', note: '', personalMessage: '', isSent: false, deliveryType: 'invitation' as Invitation['deliveryType'], invitationSide: 'nha-trai' as Invitation['invitationSide'] })
+const amountFormatter = new Intl.NumberFormat('vi-VN')
+function formatAmountInput(value: string | number | null | undefined): string {
+  const digits = String(value ?? '').replace(/\D/g, '')
+  return digits ? amountFormatter.format(Number(digits)) : ''
+}
+function parseAmountInput(value: string | number | null | undefined): number | null {
+  const digits = String(value ?? '').replace(/\D/g, '')
+  return digits ? Number(digits) : null
+}
+function onGiftAmountInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  const formatted = formatAmountInput(input.value)
+  form.giftAmount = formatted
+  input.value = formatted
+}
+const formattedGiftAmount = computed({
+  get: () => formatAmountInput(form.giftAmount),
+  set: (value: string) => {
+    form.giftAmount = formatAmountInput(value)
+  }
+})
 const deliveryLabels = { invitation: 'Thiệp mời', announcement: 'Thiệp báo hỷ' }
 const filtered = computed(() => invitations.value.filter((item) => {
   const keyword = search.value.trim().toLocaleLowerCase('vi')
@@ -52,12 +75,13 @@ async function load() {
   finally { loading.value = false }
 }
 onMounted(load)
+onActivated(load)
 function openForm(item?: Invitation) {
   editingId.value = item?.id || ''
   form.personalMessage = item?.personalMessage || ''
   hasPersonalMessage.value = !!form.personalMessage.trim()
   isSentLocked.value = item?.isSent === true
-  Object.assign(form, { twoMeals: item?.twoMeals ?? false, inviterRole: item?.inviterRole || (inviterFilter.value === 'parents' ? 'parents' : 'couple'), guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || sideFilter.value })
+  Object.assign(form, { twoMeals: item?.twoMeals ?? false, giftType: item?.giftType || 'cash', giftAmount: formatAmountInput(item?.giftAmount), inviterRole: item?.inviterRole || (inviterFilter.value === 'parents' ? 'parents' : 'couple'), guestName: item?.guestName || '', note: item?.note || '', isSent: item?.isSent || false, deliveryType: item?.deliveryType || 'invitation', invitationSide: item?.invitationSide || sideFilter.value })
   formError.value = ''
   dialog.value?.showModal()
 }
@@ -66,8 +90,10 @@ async function save() {
   saving.value = true
   formError.value = ''
   try {
+    const giftAmount = form.giftType === 'cash' ? parseAmountInput(form.giftAmount) : null
+    const giftType = form.giftType === 'other' ? 'other' : (giftAmount !== null ? 'cash' : null)
     const item = await $fetch<Invitation>(editingId.value ? `/api/admin/invitations/${editingId.value}` : '/api/admin/invitations', {
-      method: editingId.value ? 'PATCH' : 'POST', headers: headers(), body: { ...form, personalMessage: hasPersonalMessage.value ? form.personalMessage : '' }
+      method: editingId.value ? 'PATCH' : 'POST', headers: headers(), body: { ...form, giftType, giftAmount, personalMessage: hasPersonalMessage.value ? form.personalMessage : '' }
     })
     if (editingId.value) invitations.value = invitations.value.map(old => old.id === item.id ? item : old)
     else invitations.value.unshift(item)
@@ -159,7 +185,7 @@ async function copyLink(item: Invitation) {
         </tbody>
       </table>
     </div>
-    <dialog ref="dialog" aria-labelledby="invitation-form-title" @cancel="saving && $event.preventDefault()" @click="!saving && $event.target === dialog && dialog?.close()">
+    <dialog ref="dialog" aria-labelledby="invitation-form-title" @cancel="saving && $event.preventDefault()">
       <form @submit.prevent="save">
         <div class="dialog-header"><h2 id="invitation-form-title">{{ editingId ? 'Sửa thiệp mời' : 'Tạo thiệp mời' }}</h2><button type="button" class="secondary" :disabled="saving" aria-label="Đóng" @click="dialog?.close()">×</button></div>
         <label>Tên khách mời<input v-model="form.guestName" maxlength="200" required></label>
@@ -173,6 +199,13 @@ async function copyLink(item: Invitation) {
           <label>Hình thức<select v-model="form.deliveryType"><option value="invitation">Thiệp mời</option><option value="announcement">Thiệp báo hỷ</option></select></label>
         </div>
         <label v-if="editingId">Trạng thái<select v-model="form.isSent" :disabled="isSentLocked"><option :value="false">Chưa gửi</option><option :value="true">Đã gửi</option></select></label>
+        <fieldset v-if="editingId" class="inviter-options">
+          <legend>Hình thức mừng</legend>
+          <label><input v-model="form.giftType" type="radio" value="cash">Tiền mặt</label>
+          <label><input v-model="form.giftType" type="radio" value="other">Khác</label>
+        </fieldset>
+        <label v-if="editingId && form.giftType === 'cash'">Tiền mừng cưới (VNĐ)<input v-model="formattedGiftAmount" type="text" inputmode="numeric" placeholder="Ví dụ: 500.000" @input="onGiftAmountInput"></label>
+        <p v-if="editingId && form.giftType === 'other'" class="hint">Không cần nhập số tiền — ghi chi tiết (vd: tặng vàng...) vào ô Ghi chú nội bộ bên dưới.</p>
         <label class="message-toggle"><input v-model="form.twoMeals" type="checkbox">Đi ăn 2 bữa</label>
         <label class="message-toggle"><input v-model="hasPersonalMessage" type="checkbox" aria-controls="personal-message-input" :aria-expanded="hasPersonalMessage">Lời nhắn riêng</label>
         <label v-if="hasPersonalMessage" for="personal-message-input">Nội dung lời nhắn<textarea id="personal-message-input" v-model="form.personalMessage" rows="3" maxlength="2000" /></label>

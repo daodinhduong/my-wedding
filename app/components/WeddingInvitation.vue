@@ -16,7 +16,7 @@ const venue = computed(() => props.side === 'nha-gai'
       mapUrl: 'https://maps.app.goo.gl/Bs94Nto5M7RSk3Co9'
     }
   : {
-      name: 'Phan Anh Palace',
+      name: isParentsInvitation.value ? 'Trung tâm hội nghị - tiệc cưới Phan Anh' : 'Phan Anh Palace',
       address: 'Số 1 Nguyễn Hữu Cầu, phường Hải Dương, TP.Hải Phòng',
       mapUrl: 'https://maps.app.goo.gl/hwKzwyvfCyopvHvS6'
     })
@@ -106,7 +106,7 @@ const invitationIntro = ref<HTMLElement | null>(null)
 const isMusicPlaying = ref(false)
 const hasAudioError = ref(false)
 const hasPrimedBackgroundMusic = ref(false)
-const isIntroOpen = ref(false)
+const isIntroOpen = ref(isParentsInvitation.value)
 const isIntroAnimating = ref(false)
 const isSubmittingRsvp = ref(false)
 const rsvpStatusMessage = ref('')
@@ -588,7 +588,6 @@ onMounted(() => {
     }
   })
 
-  $gsap.set('.hero-copy > *', { y: 34, opacity: 0 })
   $gsap.from('.hero-photo', {
     scale: 1.12,
     opacity: 0,
@@ -596,21 +595,24 @@ onMounted(() => {
     ease: 'power3.out'
   })
 
-  $gsap.from('.invitation-card', {
-    y: 34,
-    rotateX: 5,
-    opacity: 0,
-    duration: 1.15,
-    ease: 'power3.out'
-  })
+  if (!isIntroOpen.value) {
+    $gsap.set('.hero-copy > *', { y: 34, opacity: 0 })
+    $gsap.from('.invitation-card', {
+      y: 34,
+      rotateX: 5,
+      opacity: 0,
+      duration: 1.15,
+      ease: 'power3.out'
+    })
 
-  $gsap.from('.invitation-card__ornament', {
-    scale: 0.82,
-    opacity: 0,
-    duration: 1,
-    delay: 0.28,
-    ease: 'power3.out'
-  })
+    $gsap.from('.invitation-card__ornament', {
+      scale: 0.82,
+      opacity: 0,
+      duration: 1,
+      delay: 0.28,
+      ease: 'power3.out'
+    })
+  }
 
   const revealElements = document.querySelectorAll('.reveal')
   const observer = new IntersectionObserver(
@@ -646,6 +648,12 @@ onMounted(() => {
         }
       })
     })
+  })
+
+  watch(isParentsInvitation, (isParents) => {
+    if (isParents) {
+      isIntroOpen.value = true
+    }
   })
 
   watch(isIntroOpen, () => {

@@ -28,5 +28,21 @@ export function validateInvitation(body: Record<string, unknown>) {
     throw createError({ statusCode: 400, statusMessage: 'Trang thai gui khong hop le.' })
   }
   if (body.twoMeals !== undefined && typeof body.twoMeals !== 'boolean') throw createError({ statusCode: 400, statusMessage: 'Lua chon hai bua khong hop le.' })
-  return { twoMeals: body.twoMeals === true, senderName, inviterRole, guestName, note: note || null, personalMessage: personalMessage || null, deliveryType: body.deliveryType, invitationSide: body.invitationSide, isSent: body.isSent }
+  let giftType: 'cash' | 'other' | null = null
+  if (body.giftType !== undefined && body.giftType !== null && body.giftType !== '') {
+    if (body.giftType !== 'cash' && body.giftType !== 'other') {
+      throw createError({ statusCode: 400, statusMessage: 'Hinh thuc mung khong hop le.' })
+    }
+    giftType = body.giftType
+  }
+  let giftAmount: number | null = null
+  if (giftType !== 'other' && body.giftAmount !== undefined && body.giftAmount !== null && body.giftAmount !== '') {
+    const parsed = Number(body.giftAmount)
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 2_000_000_000) {
+      throw createError({ statusCode: 400, statusMessage: 'So tien mung khong hop le.' })
+    }
+    giftAmount = parsed
+    if (!giftType) giftType = 'cash'
+  }
+  return { twoMeals: body.twoMeals === true, giftType, giftAmount, senderName, inviterRole, guestName, note: note || null, personalMessage: personalMessage || null, deliveryType: body.deliveryType, invitationSide: body.invitationSide, isSent: body.isSent }
 }
