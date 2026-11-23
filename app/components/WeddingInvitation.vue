@@ -106,7 +106,7 @@ const invitationIntro = ref<HTMLElement | null>(null)
 const isMusicPlaying = ref(false)
 const hasAudioError = ref(false)
 const hasPrimedBackgroundMusic = ref(false)
-const isIntroOpen = ref(isParentsInvitation.value)
+const isIntroOpen = ref(false)
 const isIntroAnimating = ref(false)
 const isSubmittingRsvp = ref(false)
 const rsvpStatusMessage = ref('')
@@ -588,6 +588,7 @@ onMounted(() => {
     }
   })
 
+  $gsap.set('.hero-copy > *', { y: 34, opacity: 0 })
   $gsap.from('.hero-photo', {
     scale: 1.12,
     opacity: 0,
@@ -595,24 +596,21 @@ onMounted(() => {
     ease: 'power3.out'
   })
 
-  if (!isIntroOpen.value) {
-    $gsap.set('.hero-copy > *', { y: 34, opacity: 0 })
-    $gsap.from('.invitation-card', {
-      y: 34,
-      rotateX: 5,
-      opacity: 0,
-      duration: 1.15,
-      ease: 'power3.out'
-    })
+  $gsap.from('.invitation-card', {
+    y: 34,
+    rotateX: 5,
+    opacity: 0,
+    duration: 1.15,
+    ease: 'power3.out'
+  })
 
-    $gsap.from('.invitation-card__ornament', {
-      scale: 0.82,
-      opacity: 0,
-      duration: 1,
-      delay: 0.28,
-      ease: 'power3.out'
-    })
-  }
+  $gsap.from('.invitation-card__ornament', {
+    scale: 0.82,
+    opacity: 0,
+    duration: 1,
+    delay: 0.28,
+    ease: 'power3.out'
+  })
 
   const revealElements = document.querySelectorAll('.reveal')
   const observer = new IntersectionObserver(
@@ -648,12 +646,6 @@ onMounted(() => {
         }
       })
     })
-  })
-
-  watch(isParentsInvitation, (isParents) => {
-    if (isParents) {
-      isIntroOpen.value = true
-    }
   })
 
   watch(isIntroOpen, () => {

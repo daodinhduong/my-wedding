@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { Copy, ImageDown, Pencil, Trash2 } from 'lucide-vue-next'
+import { Copy, FolderArchive, ImageDown, Pencil, Trash2, X } from 'lucide-vue-next'
+import {
+  createStoredZipBlob,
+  dedupeFilename,
+  downloadBlob
+} from '~/utils/invitationPrintCard'
 
 type Invitation = {
   id: string
@@ -40,7 +45,15 @@ const printItem = ref<Invitation | null>(null)
 const printCardRef = ref<{
   downloadJpg: () => Promise<void>
 } | null>(null)
+const batchPrintItem = ref<Invitation | null>(null)
+const batchPrintCardRef = ref<{
+  exportJpgBlob: () => Promise<Blob | null>
+  getFilename: () => string
+} | null>(null)
 const isExportingPrint = ref(false)
+const selectedIds = ref<string[]>([])
+const isBatchExporting = ref(false)
+const batchExportProgress = ref({ current: 0, total: 0 })
 const editingId = ref('')
 const isSentLocked = ref(false)
 const hasPersonalMessage = ref(false)
@@ -61,6 +74,40 @@ const ceremonyGuestCount = computed(() => filtered.value.reduce((sum, item) => {
   if (item.response?.attendanceStatus !== 'attending') return sum
   return (item.response.attendCeremony || !item.response.attendRehearsal) ? sum + item.response.guestCount : sum
 }, 0))
+const selectedIdSet = computed(() => new Set(selectedIds.value))
+const selectedItems = computed(() => invitations.value.filter(item => selectedIdSet.value.has(item.id)))
+const selectedVisibleCount = computed(() => filtered.value.filter(item => selectedIdSet.value.has(item.id)).length)
+const allVisibleSelected = computed(() => filtered.value.length > 0 && selectedVisibleCount.value === filtered.value.length)
+const someVisibleSelected = computed(() => selectedVisibleCount.value > 0 && !allVisibleSelected.value)
+const hiddenSelectedCount = computed(() => Math.max(0, selectedItems.value.length - selectedVisibleCount.value))
+function pruneSelection() {
+  const validIds = new Set(invitations.value.map(item => item.id))
+  selectedIds.value = selectedIds.value.filter(id => validIds.has(id))
+}
+function toggleSelect(id: string) {
+  if (selectedIdSet.value.has(id)) {
+    selectedIds.value = selectedIds.value.filter(item => item !== id)
+  }
+  else {
+    selectedIds.value = [...selectedIds.value, id]
+  }
+}
+function toggleSelectAllVisible() {
+  const visibleIds = filtered.value.map(item => item.id)
+  if (!visibleIds.length) return
+  if (allVisibleSelected.value) {
+    const visibleSet = new Set(visibleIds)
+    selectedIds.value = selectedIds.value.filter(id => !visibleSet.has(id))
+  }
+  else {
+    const merged = new Set(selectedIds.value)
+    for (const id of visibleIds) merged.add(id)
+    selectedIds.value = Array.from(merged)
+  }
+}
+function clearSelection() {
+  selectedIds.value = []
+}
 function headers() { return { 'x-admin-password': props.adminPassword } }
 function errorText(cause: unknown) {
   const value = cause as { data?: { statusMessage?: string }; message?: string }
@@ -69,7 +116,10 @@ function errorText(cause: unknown) {
 async function load() {
   loading.value = true
   error.value = ''
-  try { invitations.value = await $fetch<Invitation[]>('/api/admin/invitations', { headers: headers() }) }
+  try {
+    invitations.value = await $fetch<Invitation[]>('/api/admin/invitations', { headers: headers() })
+    pruneSelection()
+  }
   catch (cause) { error.value = errorText(cause) }
   finally { loading.value = false }
 }
@@ -122,6 +172,7 @@ async function remove(item: Invitation) {
   try {
     await $fetch(`/api/admin/invitations/${item.id}`, { method: 'DELETE', headers: headers() })
     invitations.value = invitations.value.filter(old => old.id !== item.id)
+    selectedIds.value = selectedIds.value.filter(id => id !== item.id)
   }
   catch (cause) { error.value = errorText(cause) }
   finally { busyId.value = '' }
@@ -149,6 +200,83 @@ async function downloadPrintCard() {
     isExportingPrint.value = false
   }
 }
+async function renderBatchItemJpg(item: Invitation) {
+  batchPrintItem.value = item
+  await nextTick()
+  if (!batchPrintCardRef.value) return null
+  const blob = await batchPrintCardRef.value.exportJpgBlob()
+  if (!blob) return null
+  return {
+    blob,
+    filename: batchPrintCardRef.value.getFilename()
+  }
+}
+async function exportSelectedBatch(mode: 'zip' | 'individual') {
+  const items = selectedItems.value
+  if (!items.length || isBatchExporting.value) return
+
+  isBatchExporting.value = true
+  batchExportProgress.value = { current: 0, total: items.length }
+  error.value = ''
+  message.value = ''
+
+  try {
+    const usedNames = new Set<string>()
+
+    if (items.length === 1) {
+      const rendered = await renderBatchItemJpg(items[0]!)
+      batchExportProgress.value.current = 1
+      if (!rendered) throw new Error('Không thể tạo ảnh JPG cho thiệp đã chọn.')
+      downloadBlob(rendered.blob, rendered.filename)
+      message.value = `Đã xuất ảnh JPG cho ${items[0]!.guestName}.`
+      return
+    }
+
+    if (mode === 'zip') {
+      const files: Array<{ name: string; data: Uint8Array }> = []
+      for (let i = 0; i < items.length; i++) {
+        const rendered = await renderBatchItemJpg(items[i]!)
+        batchExportProgress.value.current = i + 1
+        if (rendered) {
+          const uniqueName = dedupeFilename(rendered.filename, usedNames)
+          const buffer = await rendered.blob.arrayBuffer()
+          files.push({ name: uniqueName, data: new Uint8Array(buffer) })
+        }
+      }
+      if (!files.length) throw new Error('Không thể tạo ảnh JPG cho các thiệp đã chọn.')
+
+      const dateTag = new Date().toISOString().slice(0, 10)
+      const zipBlob = createStoredZipBlob(files)
+      downloadBlob(zipBlob, `thiep-moi-${dateTag}-${files.length}-anh.zip`)
+      message.value = `Đã xuất ${files.length} ảnh JPG vào file ZIP.`
+    }
+    else {
+      let exportedCount = 0
+      for (let i = 0; i < items.length; i++) {
+        const rendered = await renderBatchItemJpg(items[i]!)
+        batchExportProgress.value.current = i + 1
+        if (rendered) {
+          const uniqueName = dedupeFilename(rendered.filename, usedNames)
+          downloadBlob(rendered.blob, uniqueName)
+          exportedCount += 1
+          if (i < items.length - 1) {
+            await new Promise(resolve => window.setTimeout(resolve, 250))
+          }
+        }
+      }
+      if (!exportedCount) throw new Error('Không thể tạo ảnh JPG cho các thiệp đã chọn.')
+      message.value = `Đã tải xuống ${exportedCount} ảnh JPG.`
+    }
+  }
+  catch (cause) {
+    error.value = errorText(cause)
+  }
+  finally {
+    batchPrintItem.value = null
+    isBatchExporting.value = false
+    batchExportProgress.value = { current: 0, total: 0 }
+  }
+}
 </script>
 
 <template>
@@ -172,14 +300,90 @@ async function downloadPrintCard() {
     </div>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <p v-if="message" class="hint" role="status">{{ message }}</p>
+    <div v-if="selectedItems.length" class="bulk-bar" role="region" aria-label="Thao tác hàng loạt">
+      <div class="bulk-info">
+        <strong>Đã chọn {{ selectedItems.length }} thiệp</strong>
+        <span v-if="hiddenSelectedCount" class="bulk-sub">(gồm {{ hiddenSelectedCount }} thiệp ở bộ lọc khác)</span>
+        <span v-if="isBatchExporting" class="bulk-progress">
+          — Đang xuất {{ batchExportProgress.current }}/{{ batchExportProgress.total }} ảnh JPG...
+        </span>
+      </div>
+      <div class="bulk-actions">
+        <button
+          v-if="selectedItems.length === 1"
+          type="button"
+          :disabled="isBatchExporting"
+          @click="exportSelectedBatch('individual')"
+        >
+          <ImageDown :size="18" aria-hidden="true" />
+          <span>{{ isBatchExporting ? 'Đang xuất...' : 'Xuất ảnh JPG (1)' }}</span>
+        </button>
+        <template v-else>
+          <button
+            type="button"
+            :disabled="isBatchExporting"
+            @click="exportSelectedBatch('zip')"
+          >
+            <FolderArchive :size="18" aria-hidden="true" />
+            <span>{{ isBatchExporting ? `Đang xuất ${batchExportProgress.current}/${batchExportProgress.total}...` : `Tải file ZIP (${selectedItems.length} ảnh JPG)` }}</span>
+          </button>
+          <button
+            type="button"
+            class="secondary"
+            :disabled="isBatchExporting"
+            @click="exportSelectedBatch('individual')"
+          >
+            <ImageDown :size="18" aria-hidden="true" />
+            <span>Tải từng ảnh JPG</span>
+          </button>
+        </template>
+        <button type="button" class="secondary" :disabled="isBatchExporting" @click="clearSelection">
+          <X :size="16" aria-hidden="true" />
+          <span>Bỏ chọn</span>
+        </button>
+      </div>
+    </div>
     <div class="table-wrap" :aria-busy="loading">
       <table>
-        <thead><tr><th>STT</th><th>Tên khách mời</th><th>Người đứng lời mời</th><th>Ghi chú</th><th>Bên mời</th><th>Hình thức</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <thead>
+          <tr>
+            <th class="select-col">
+              <input
+                type="checkbox"
+                class="row-checkbox"
+                :checked="allVisibleSelected"
+                :indeterminate.prop="someVisibleSelected"
+                :disabled="loading || !filtered.length || isBatchExporting"
+                aria-label="Chọn tất cả thiệp đang hiển thị"
+                title="Chọn tất cả thiệp đang hiển thị"
+                @change="toggleSelectAllVisible"
+              >
+            </th>
+            <th>STT</th>
+            <th>Tên khách mời</th>
+            <th>Người đứng lời mời</th>
+            <th>Ghi chú</th>
+            <th>Bên mời</th>
+            <th>Hình thức</th>
+            <th>Trạng thái</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="8" class="empty">Đang tải thiệp mời...</td></tr>
-          <tr v-else-if="!filtered.length"><td colspan="8" class="empty">{{ invitations.length ? 'Không có thiệp phù hợp với bộ lọc.' : 'Chưa có thiệp mời. Bấm “Thêm mới” để tạo thiệp đầu tiên.' }}</td></tr>
+          <tr v-if="loading"><td colspan="9" class="empty">Đang tải thiệp mời...</td></tr>
+          <tr v-else-if="!filtered.length"><td colspan="9" class="empty">{{ invitations.length ? 'Không có thiệp phù hợp với bộ lọc.' : 'Chưa có thiệp mời. Bấm “Thêm mới” để tạo thiệp đầu tiên.' }}</td></tr>
           <template v-else>
-            <tr v-for="(item, index) in filtered" :key="item.id">
+            <tr v-for="(item, index) in filtered" :key="item.id" :class="{ selected: selectedIdSet.has(item.id) }">
+              <td class="select-col">
+                <input
+                  type="checkbox"
+                  class="row-checkbox"
+                  :checked="selectedIdSet.has(item.id)"
+                  :disabled="isBatchExporting"
+                  :aria-label="`Chọn thiệp của ${item.guestName}`"
+                  @change="toggleSelect(item.id)"
+                >
+              </td>
               <td>{{ index + 1 }}</td>
               <td><strong>{{ item.guestName }}</strong></td><td>{{ item.inviterRole === 'parents' ? 'Bố mẹ' : 'Cô dâu & chú rể' }}</td>
               <td class="note">{{ item.note || '—' }}</td>
@@ -239,6 +443,15 @@ async function downloadPrintCard() {
         <button type="button" :disabled="isExportingPrint" @click="downloadPrintCard">{{ isExportingPrint ? 'Đang xuất...' : 'Tải ảnh JPG' }}</button>
       </div>
     </dialog>
+    <div v-if="batchPrintItem" class="batch-print-renderer" aria-hidden="true">
+      <InvitationPrintCard
+        ref="batchPrintCardRef"
+        :guest-name="batchPrintItem.guestName"
+        :invitation-side="batchPrintItem.invitationSide"
+        :inviter-role="batchPrintItem.inviterRole"
+        :delivery-type="batchPrintItem.deliveryType"
+      />
+    </div>
   </section>
 </template>
 
@@ -268,11 +481,22 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .sent-button.sent:disabled { opacity: 1; cursor: default; }
 .danger { background: #9f3f34; }
 .table-wrap { overflow-x: auto; border: 1px solid #e2d4c9; }
-table { width: 100%; min-width: 960px; border-collapse: collapse; }
+table { width: 100%; min-width: 1000px; border-collapse: collapse; }
 th, td { padding: 14px; text-align: left; vertical-align: top; border-bottom: 1px solid #eadfd7; }
 th { background: #f1e8df; color: #5a514c; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; }
 tbody tr { transition: background-color .15s ease; }
 tbody tr:hover { background: #f6ede4; }
+tbody tr.selected { background: #f7ece0; }
+tbody tr.selected:hover { background: #f2e2d2; }
+.select-col { width: 44px; text-align: center; vertical-align: middle; }
+.row-checkbox { width: 18px; height: 18px; min-height: 0; padding: 0; margin: 0; cursor: pointer; accent-color: #6f3d34; }
+.bulk-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; padding: 12px 16px; border: 1px solid #d8c3b1; background: #f6ede4; }
+.bulk-info { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #4a372f; }
+.bulk-sub { color: #786a60; font-size: .9rem; }
+.bulk-progress { color: #6f3d34; font-weight: 700; }
+.bulk-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.bulk-actions button { gap: 8px; }
+.batch-print-renderer { position: fixed; left: -99999px; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
 td { overflow-wrap: anywhere; }
 .note { white-space: pre-wrap; max-width: 240px; }
 .row-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; }

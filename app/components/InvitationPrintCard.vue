@@ -24,18 +24,21 @@ const cardTitle = computed(() => {
   return isBride.value ? 'THIỆP MỜI VU QUY' : 'THIỆP MỜI THÀNH HÔN'
 })
 
-const inviteLead = computed(() => isAnnouncement.value ? 'TRÂN TRỌNG BÁO TIN' : 'TRÂN TRỌNG KÍNH MỜI')
-const inviteSubline1 = computed(() => {
-  if (isAnnouncement.value) {
-    return isBride.value ? 'TIN VUI LỄ VU QUY CỦA HAI CON' : 'TIN VUI LỄ THÀNH HÔN CỦA HAI CON'
-  }
-  return isBride.value
-    ? 'TỚI DỰ BỮA CƠM THÂN MẬT & LỄ VU QUY'
-    : 'TỚI DỰ BỮA CƠM THÂN MẬT & LỄ THÀNH HÔN'
-})
-const inviteSubline2 = computed(() => isAnnouncement.value
-  ? 'CHIA SẺ NIỀM VUI CÙNG GIA ĐÌNH CHÚNG TÔI'
-  : 'CHUNG VUI CÙNG GIA ĐÌNH CHÚNG TÔI')
+const inviteLead = computed(() => isAnnouncement.value ? 'TRÂN TRỌNG BÁO TIN ĐẾN' : 'TRÂN TRỌNG KÍNH MỜI')
+const inviteSubline1 = computed(() => isBride.value
+  ? 'TỚI DỰ BỮA CƠM THÂN MẬT & LỄ VU QUY'
+  : 'TỚI DỰ BỮA CƠM THÂN MẬT & LỄ THÀNH HÔN')
+const inviteSubline2 = 'CHUNG VUI CÙNG GIA ĐÌNH CHÚNG TÔI'
+const announcementSubline = 'CHÍNH THỨC NÊN DUYÊN VỢ CHỒNG'
+const announcementMessage = computed(() => props.inviterRole === 'parents'
+  ? 'Tình cảm và lời chúc phúc của Quý vị luôn là món quà quý giá nhất dành cho hai con và gia đình.'
+  : 'Dù chưa thể chung vui trực tiếp, tình cảm và lời chúc phúc của bạn luôn là món quà quý giá nhất.')
+const footerNote = computed(() => isAnnouncement.value
+  ? 'Rất mong nhận được lời chúc phúc từ Quý vị & các bạn!'
+  : 'Sự hiện diện của Quý khách là niềm vinh dự của gia đình chúng tôi!')
+const footerCta = computed(() => isAnnouncement.value
+  ? 'TRÂN TRỌNG CẢM ƠN!'
+  : 'RẤT HÂN HẠNH ĐƯỢC ĐÓN TIẾP!')
 
 const eventInfo = computed(() => isBride.value
   ? {
@@ -95,6 +98,15 @@ const layoutMetrics = computed(() => {
   const footerLineY = boxY + boxH + 74
   const venueFontSize = eventInfo.value.venueName.length > 32 ? 27 : 31
 
+  const announcementLines = wrapTextWords(announcementMessage.value, 36)
+  const announcementLineHeight = 50
+  const announcementCoupleY = dottedY + 112
+  const announcementSublineY = announcementCoupleY + 66
+  const announcementBoxY = announcementSublineY + 56
+  const announcementMsgStartY = announcementBoxY + 304
+  const announcementBoxH = 304 + Math.max(0, announcementLines.length - 1) * announcementLineHeight + 56
+  const announcementFooterLineY = Math.max(1480, announcementBoxY + announcementBoxH + 56)
+
   return {
     guestFontSize,
     guestLines,
@@ -106,7 +118,15 @@ const layoutMetrics = computed(() => {
     boxY,
     boxH,
     footerLineY,
-    venueFontSize
+    venueFontSize,
+    announcementLines,
+    announcementLineHeight,
+    announcementCoupleY,
+    announcementSublineY,
+    announcementBoxY,
+    announcementMsgStartY,
+    announcementBoxH,
+    announcementFooterLineY
   }
 })
 
@@ -362,140 +382,238 @@ async function renderCardCanvas(): Promise<HTMLCanvasElement | null> {
   ctx.fillText('P. Tân Hưng, TP. Hải Phòng', leftX, 474)
   ctx.fillText('P. Hải An, TP. Hải Phòng', rightX, 474)
 
-  // Invitation lead
-  ctx.fillStyle = '#7b634b'
-  ctx.font = '500 26px "Be Vietnam Pro", sans-serif'
-  setLetterSpacing(ctx, '4px')
-  ctx.fillText(inviteLead.value, CX, 594)
-  setLetterSpacing(ctx, '0px')
-
-  // Guest name lines
-  ctx.fillStyle = '#3d2c1e'
-  ctx.font = `italic 600 ${m.guestFontSize}px "Playfair Display", "Cormorant Garamond", Georgia, serif`
-  m.guestLines.forEach((line, idx) => {
-    ctx.fillText(line, CX, m.guestStartY + idx * m.guestLineHeight)
-  })
-
-  // Dotted divider under guest name
-  ctx.save()
-  ctx.strokeStyle = '#b99f7d'
-  ctx.lineWidth = 2
-  ctx.setLineDash([4, 6])
-  ctx.beginPath()
-  ctx.moveTo(270, m.dottedY)
-  ctx.lineTo(CARD_W - 270, m.dottedY)
-  ctx.stroke()
-  ctx.restore()
-
-  // Sublines
-  ctx.fillStyle = '#5c4a3c'
-  ctx.font = '500 25px "Be Vietnam Pro", sans-serif'
-  setLetterSpacing(ctx, '1px')
-  ctx.fillText(inviteSubline1.value, CX, m.bodyY)
-  ctx.fillText(inviteSubline2.value, CX, m.bodyY + 40)
-  setLetterSpacing(ctx, '0px')
-
-  // Couple names + heart centered as a single unit
-  ctx.fillStyle = '#79542e'
-  ctx.font = 'italic 700 84px "Playfair Display", "Cormorant Garamond", Georgia, serif'
-  const groomWidth = ctx.measureText('Đình Dương').width
-  const brideWidth = ctx.measureText('Thu Hà').width
-  const gap = 56
-  const startCoupleX = CX - (groomWidth + gap + brideWidth) / 2
-
-  ctx.textAlign = 'left'
-  ctx.fillText('Đình Dương', startCoupleX, m.coupleY)
-  ctx.fillText('Thu Hà', startCoupleX + groomWidth + gap, m.coupleY)
-  drawVectorHeart(ctx, startCoupleX + groomWidth + gap / 2, m.coupleY - 14, 28)
-
-  ctx.textAlign = 'center'
-
-  // Event box with soft elevation
   const boxX = 104
   const boxW = CARD_W - 208
-  ctx.save()
-  ctx.shadowColor = 'rgba(92, 68, 44, 0.08)'
-  ctx.shadowBlur = 22
-  ctx.shadowOffsetY = 8
-  drawRoundedRect(ctx, boxX, m.boxY, boxW, m.boxH, 16)
-  ctx.fillStyle = '#fbf8f2'
-  ctx.fill()
-  ctx.restore()
+  let activeFooterLineY = m.footerLineY
 
-  drawRoundedRect(ctx, boxX, m.boxY, boxW, m.boxH, 16)
-  ctx.strokeStyle = '#dfd0bc'
-  ctx.lineWidth = 1.6
-  ctx.stroke()
+  if (isAnnouncement.value) {
+    activeFooterLineY = m.announcementFooterLineY
 
-  // Event date & lunar date
-  ctx.fillStyle = '#3b2b1f'
-  ctx.font = '600 40px "Be Vietnam Pro", sans-serif'
-  setLetterSpacing(ctx, '2px')
-  ctx.fillText(eventInfo.value.dateLine, CX, m.boxY + 72)
-  setLetterSpacing(ctx, '0px')
+    // Announcement lead
+    ctx.fillStyle = '#7b634b'
+    ctx.font = '500 26px "Be Vietnam Pro", sans-serif'
+    setLetterSpacing(ctx, '4px')
+    ctx.fillText(inviteLead.value, CX, 594)
+    setLetterSpacing(ctx, '0px')
 
-  ctx.fillStyle = '#755f4d'
-  ctx.font = 'italic 500 28px "Cormorant Garamond", Georgia, serif'
-  ctx.fillText(eventInfo.value.lunarLine, CX, m.boxY + 116)
+    // Guest name lines
+    ctx.fillStyle = '#3d2c1e'
+    ctx.font = `italic 600 ${m.guestFontSize}px "Playfair Display", "Cormorant Garamond", Georgia, serif`
+    m.guestLines.forEach((line, idx) => {
+      ctx.fillText(line, CX, m.guestStartY + idx * m.guestLineHeight)
+    })
 
-  // Inner box lines
-  ctx.strokeStyle = '#e5d8c6'
-  ctx.lineWidth = 1.2
-  ctx.beginPath()
-  ctx.moveTo(boxX + 42, m.boxY + 144)
-  ctx.lineTo(boxX + boxW - 42, m.boxY + 144)
-  ctx.moveTo(boxX + 42, m.boxY + 284)
-  ctx.lineTo(boxX + boxW - 42, m.boxY + 284)
-  ctx.moveTo(CX, m.boxY + 162)
-  ctx.lineTo(CX, m.boxY + 266)
-  ctx.stroke()
+    // Dotted divider under guest name
+    ctx.save()
+    ctx.strokeStyle = '#b99f7d'
+    ctx.lineWidth = 2
+    ctx.setLineDash([4, 6])
+    ctx.beginPath()
+    ctx.moveTo(270, m.dottedY)
+    ctx.lineTo(CARD_W - 270, m.dottedY)
+    ctx.stroke()
+    ctx.restore()
 
-  const timeLeftX = boxX + boxW * 0.27
-  const timeRightX = boxX + boxW * 0.73
+    // Couple names + heart centered as a single unit
+    ctx.fillStyle = '#79542e'
+    ctx.font = 'italic 700 84px "Playfair Display", "Cormorant Garamond", Georgia, serif'
+    const groomWidth = ctx.measureText('Đình Dương').width
+    const brideWidth = ctx.measureText('Thu Hà').width
+    const gap = 56
+    const startCoupleX = CX - (groomWidth + gap + brideWidth) / 2
 
-  ctx.fillStyle = '#755331'
-  ctx.font = '600 36px "Cormorant Garamond", Georgia, serif'
-  ctx.fillText(eventInfo.value.leftTime, timeLeftX, m.boxY + 202)
-  ctx.fillText(eventInfo.value.rightTime, timeRightX, m.boxY + 202)
+    ctx.textAlign = 'left'
+    ctx.fillText('Đình Dương', startCoupleX, m.announcementCoupleY)
+    ctx.fillText('Thu Hà', startCoupleX + groomWidth + gap, m.announcementCoupleY)
+    drawVectorHeart(ctx, startCoupleX + groomWidth + gap / 2, m.announcementCoupleY - 14, 28)
 
-  ctx.fillStyle = '#3b2b1f'
-  ctx.font = '700 32px "Cormorant Garamond", Georgia, serif'
-  ctx.fillText(eventInfo.value.leftLabel, timeLeftX, m.boxY + 248)
-  ctx.fillText(eventInfo.value.rightLabel, timeRightX, m.boxY + 248)
+    ctx.textAlign = 'center'
 
-  // Venue
-  ctx.fillStyle = '#8b7359'
-  ctx.font = '500 22px "Be Vietnam Pro", sans-serif'
-  setLetterSpacing(ctx, '3.5px')
-  ctx.fillText('ĐỊA ĐIỂM TỔ CHỨC', CX, m.boxY + 330)
-  setLetterSpacing(ctx, '0px')
+    // Announcement subline
+    ctx.fillStyle = '#5c4a3c'
+    ctx.font = '500 25px "Be Vietnam Pro", sans-serif'
+    setLetterSpacing(ctx, '1.5px')
+    ctx.fillText(announcementSubline, CX, m.announcementSublineY)
+    setLetterSpacing(ctx, '0px')
 
-  ctx.fillStyle = '#3b2b1f'
-  ctx.font = `700 ${m.venueFontSize}px "Be Vietnam Pro", sans-serif`
-  ctx.fillText(eventInfo.value.venueName, CX, m.boxY + 378)
+    // Announcement event box
+    ctx.save()
+    ctx.shadowColor = 'rgba(92, 68, 44, 0.08)'
+    ctx.shadowBlur = 22
+    ctx.shadowOffsetY = 8
+    drawRoundedRect(ctx, boxX, m.announcementBoxY, boxW, m.announcementBoxH, 16)
+    ctx.fillStyle = '#fbf8f2'
+    ctx.fill()
+    ctx.restore()
 
-  ctx.fillStyle = '#6f5a49'
-  ctx.font = '400 26px "Be Vietnam Pro", sans-serif'
-  ctx.fillText(eventInfo.value.venueAddress, CX, m.boxY + 424)
+    drawRoundedRect(ctx, boxX, m.announcementBoxY, boxW, m.announcementBoxH, 16)
+    ctx.strokeStyle = '#dfd0bc'
+    ctx.lineWidth = 1.6
+    ctx.stroke()
+
+    ctx.fillStyle = '#8b7359'
+    ctx.font = '500 22px "Be Vietnam Pro", sans-serif'
+    setLetterSpacing(ctx, '3.5px')
+    ctx.fillText('HÔN LỄ ĐƯỢC TỔ CHỨC', CX, m.announcementBoxY + 78)
+    setLetterSpacing(ctx, '0px')
+
+    ctx.fillStyle = '#3b2b1f'
+    ctx.font = '600 40px "Be Vietnam Pro", sans-serif'
+    setLetterSpacing(ctx, '2px')
+    ctx.fillText(eventInfo.value.dateLine, CX, m.announcementBoxY + 146)
+    setLetterSpacing(ctx, '0px')
+
+    ctx.fillStyle = '#755f4d'
+    ctx.font = 'italic 500 28px "Cormorant Garamond", Georgia, serif'
+    ctx.fillText(eventInfo.value.lunarLine, CX, m.announcementBoxY + 194)
+
+    ctx.strokeStyle = '#e5d8c6'
+    ctx.lineWidth = 1.2
+    ctx.beginPath()
+    ctx.moveTo(boxX + 76, m.announcementBoxY + 242)
+    ctx.lineTo(boxX + boxW - 76, m.announcementBoxY + 242)
+    ctx.stroke()
+
+    ctx.fillStyle = '#4c3a2b'
+    ctx.font = 'italic 600 33px "Cormorant Garamond", Georgia, serif'
+    m.announcementLines.forEach((line, idx) => {
+      ctx.fillText(line, CX, m.announcementMsgStartY + idx * m.announcementLineHeight)
+    })
+  }
+  else {
+    // Invitation lead
+    ctx.fillStyle = '#7b634b'
+    ctx.font = '500 26px "Be Vietnam Pro", sans-serif'
+    setLetterSpacing(ctx, '4px')
+    ctx.fillText(inviteLead.value, CX, 594)
+    setLetterSpacing(ctx, '0px')
+
+    // Guest name lines
+    ctx.fillStyle = '#3d2c1e'
+    ctx.font = `italic 600 ${m.guestFontSize}px "Playfair Display", "Cormorant Garamond", Georgia, serif`
+    m.guestLines.forEach((line, idx) => {
+      ctx.fillText(line, CX, m.guestStartY + idx * m.guestLineHeight)
+    })
+
+    // Dotted divider under guest name
+    ctx.save()
+    ctx.strokeStyle = '#b99f7d'
+    ctx.lineWidth = 2
+    ctx.setLineDash([4, 6])
+    ctx.beginPath()
+    ctx.moveTo(270, m.dottedY)
+    ctx.lineTo(CARD_W - 270, m.dottedY)
+    ctx.stroke()
+    ctx.restore()
+
+    // Sublines
+    ctx.fillStyle = '#5c4a3c'
+    ctx.font = '500 25px "Be Vietnam Pro", sans-serif'
+    setLetterSpacing(ctx, '1px')
+    ctx.fillText(inviteSubline1.value, CX, m.bodyY)
+    ctx.fillText(inviteSubline2, CX, m.bodyY + 40)
+    setLetterSpacing(ctx, '0px')
+
+    // Couple names + heart centered as a single unit
+    ctx.fillStyle = '#79542e'
+    ctx.font = 'italic 700 84px "Playfair Display", "Cormorant Garamond", Georgia, serif'
+    const groomWidth = ctx.measureText('Đình Dương').width
+    const brideWidth = ctx.measureText('Thu Hà').width
+    const gap = 56
+    const startCoupleX = CX - (groomWidth + gap + brideWidth) / 2
+
+    ctx.textAlign = 'left'
+    ctx.fillText('Đình Dương', startCoupleX, m.coupleY)
+    ctx.fillText('Thu Hà', startCoupleX + groomWidth + gap, m.coupleY)
+    drawVectorHeart(ctx, startCoupleX + groomWidth + gap / 2, m.coupleY - 14, 28)
+
+    ctx.textAlign = 'center'
+
+    // Event box with soft elevation
+    ctx.save()
+    ctx.shadowColor = 'rgba(92, 68, 44, 0.08)'
+    ctx.shadowBlur = 22
+    ctx.shadowOffsetY = 8
+    drawRoundedRect(ctx, boxX, m.boxY, boxW, m.boxH, 16)
+    ctx.fillStyle = '#fbf8f2'
+    ctx.fill()
+    ctx.restore()
+
+    drawRoundedRect(ctx, boxX, m.boxY, boxW, m.boxH, 16)
+    ctx.strokeStyle = '#dfd0bc'
+    ctx.lineWidth = 1.6
+    ctx.stroke()
+
+    // Event date & lunar date
+    ctx.fillStyle = '#3b2b1f'
+    ctx.font = '600 40px "Be Vietnam Pro", sans-serif'
+    setLetterSpacing(ctx, '2px')
+    ctx.fillText(eventInfo.value.dateLine, CX, m.boxY + 72)
+    setLetterSpacing(ctx, '0px')
+
+    ctx.fillStyle = '#755f4d'
+    ctx.font = 'italic 500 28px "Cormorant Garamond", Georgia, serif'
+    ctx.fillText(eventInfo.value.lunarLine, CX, m.boxY + 116)
+
+    // Inner box lines
+    ctx.strokeStyle = '#e5d8c6'
+    ctx.lineWidth = 1.2
+    ctx.beginPath()
+    ctx.moveTo(boxX + 42, m.boxY + 144)
+    ctx.lineTo(boxX + boxW - 42, m.boxY + 144)
+    ctx.moveTo(boxX + 42, m.boxY + 284)
+    ctx.lineTo(boxX + boxW - 42, m.boxY + 284)
+    ctx.moveTo(CX, m.boxY + 162)
+    ctx.lineTo(CX, m.boxY + 266)
+    ctx.stroke()
+
+    const timeLeftX = boxX + boxW * 0.27
+    const timeRightX = boxX + boxW * 0.73
+
+    ctx.fillStyle = '#755331'
+    ctx.font = '600 36px "Cormorant Garamond", Georgia, serif'
+    ctx.fillText(eventInfo.value.leftTime, timeLeftX, m.boxY + 202)
+    ctx.fillText(eventInfo.value.rightTime, timeRightX, m.boxY + 202)
+
+    ctx.fillStyle = '#3b2b1f'
+    ctx.font = '700 32px "Cormorant Garamond", Georgia, serif'
+    ctx.fillText(eventInfo.value.leftLabel, timeLeftX, m.boxY + 248)
+    ctx.fillText(eventInfo.value.rightLabel, timeRightX, m.boxY + 248)
+
+    // Venue
+    ctx.fillStyle = '#8b7359'
+    ctx.font = '500 22px "Be Vietnam Pro", sans-serif'
+    setLetterSpacing(ctx, '3.5px')
+    ctx.fillText('ĐỊA ĐIỂM TỔ CHỨC', CX, m.boxY + 330)
+    setLetterSpacing(ctx, '0px')
+
+    ctx.fillStyle = '#3b2b1f'
+    ctx.font = `700 ${m.venueFontSize}px "Be Vietnam Pro", sans-serif`
+    ctx.fillText(eventInfo.value.venueName, CX, m.boxY + 378)
+
+    ctx.fillStyle = '#6f5a49'
+    ctx.font = '400 26px "Be Vietnam Pro", sans-serif'
+    ctx.fillText(eventInfo.value.venueAddress, CX, m.boxY + 424)
+  }
 
   // Footer ornament
   ctx.strokeStyle = '#d3bea3'
   ctx.lineWidth = 1.2
   ctx.beginPath()
-  ctx.moveTo(260, m.footerLineY)
-  ctx.lineTo(CX - 28, m.footerLineY)
-  ctx.moveTo(CX + 28, m.footerLineY)
-  ctx.lineTo(CARD_W - 260, m.footerLineY)
+  ctx.moveTo(260, activeFooterLineY)
+  ctx.lineTo(CX - 28, activeFooterLineY)
+  ctx.moveTo(CX + 28, activeFooterLineY)
+  ctx.lineTo(CARD_W - 260, activeFooterLineY)
   ctx.stroke()
 
   ctx.fillStyle = '#b4956b'
   ctx.beginPath()
-  ctx.arc(CX - 16, m.footerLineY, 2.2, 0, Math.PI * 2)
-  ctx.arc(CX + 16, m.footerLineY, 2.2, 0, Math.PI * 2)
+  ctx.arc(CX - 16, activeFooterLineY, 2.2, 0, Math.PI * 2)
+  ctx.arc(CX + 16, activeFooterLineY, 2.2, 0, Math.PI * 2)
   ctx.fill()
 
   ctx.save()
-  ctx.translate(CX, m.footerLineY)
+  ctx.translate(CX, activeFooterLineY)
   ctx.rotate(Math.PI / 4)
   ctx.strokeStyle = '#b4956b'
   ctx.strokeRect(-5.5, -5.5, 11, 11)
@@ -503,20 +621,18 @@ async function renderCardCanvas(): Promise<HTMLCanvasElement | null> {
 
   ctx.fillStyle = '#5c4a3c'
   ctx.font = 'italic 500 31px "Cormorant Garamond", Georgia, serif'
-  ctx.fillText('Sự hiện diện của Quý khách là niềm vinh dự của gia đình chúng tôi!', CX, m.footerLineY + 56)
+  ctx.fillText(footerNote.value, CX, activeFooterLineY + (isAnnouncement.value ? 60 : 56))
 
   ctx.fillStyle = '#8b7359'
   ctx.font = '500 21px "Be Vietnam Pro", sans-serif'
   setLetterSpacing(ctx, '3px')
-  ctx.fillText('RẤT HÂN HẠNH ĐƯỢC ĐÓN TIẾP!', CX, m.footerLineY + 102)
+  ctx.fillText(footerCta.value, CX, activeFooterLineY + (isAnnouncement.value ? 108 : 102))
   setLetterSpacing(ctx, '0px')
 
   return canvas
 }
 
-async function downloadJpg() {
-  const canvas = await renderCardCanvas()
-  if (!canvas) return
+function getFilename() {
   const slug = displayGuestName.value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -526,17 +642,34 @@ async function downloadJpg() {
     .replace(/^-+|-+$/g, '')
     .toLowerCase() || 'khach-moi'
 
+  const filePrefix = isAnnouncement.value ? 'thiep-bao-hy' : 'thiep-moi'
+  return `${filePrefix}-${slug}.jpg`
+}
+
+async function exportJpgBlob(): Promise<Blob | null> {
+  const canvas = await renderCardCanvas()
+  if (!canvas) return null
+
+  return new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.95)
+  })
+}
+
+async function downloadJpg() {
+  const canvas = await renderCardCanvas()
+  if (!canvas) return
+
   const link = document.createElement('a')
-  link.download = `thiep-moi-${slug}.jpg`
+  link.download = getFilename()
   link.href = canvas.toDataURL('image/jpeg', 0.95)
   link.click()
 }
 
-defineExpose({ downloadJpg })
+defineExpose({ downloadJpg, exportJpgBlob, getFilename })
 </script>
 
 <template>
-  <article class="print-card-shell" :aria-label="`Thiệp mời của ${displayGuestName}`">
+  <article class="print-card-shell" :aria-label="`${isAnnouncement ? 'Thiệp báo hỷ' : 'Thiệp mời'} của ${displayGuestName}`">
     <svg
       class="print-card-svg"
       viewBox="0 0 1200 1750"
@@ -648,106 +781,200 @@ defineExpose({ downloadJpg })
         <text x="875" y="474" class="svg-family-addr">P. Hải An, TP. Hải Phòng</text>
       </g>
 
-      <!-- Guest & invitation body -->
-      <text x="600" y="594" text-anchor="middle" class="svg-lead">{{ inviteLead }}</text>
+      <!-- Announcement body & card -->
+      <template v-if="isAnnouncement">
+        <text x="600" y="594" text-anchor="middle" class="svg-lead">{{ inviteLead }}</text>
 
-      <text
-        v-for="(line, idx) in layoutMetrics.guestLines"
-        :key="idx"
-        x="600"
-        :y="layoutMetrics.guestStartY + idx * layoutMetrics.guestLineHeight"
-        text-anchor="middle"
-        class="svg-guest-name"
-        :style="{ fontSize: `${layoutMetrics.guestFontSize}px` }"
-      >
-        {{ line }}
-      </text>
+        <text
+          v-for="(line, idx) in layoutMetrics.guestLines"
+          :key="`ann-guest-${idx}`"
+          x="600"
+          :y="layoutMetrics.guestStartY + idx * layoutMetrics.guestLineHeight"
+          text-anchor="middle"
+          class="svg-guest-name"
+          :style="{ fontSize: `${layoutMetrics.guestFontSize}px` }"
+        >
+          {{ line }}
+        </text>
 
-      <line
-        x1="270"
-        :y1="layoutMetrics.dottedY"
-        x2="930"
-        :y2="layoutMetrics.dottedY"
-        stroke="#b99f7d"
-        stroke-width="2"
-        stroke-dasharray="4 6"
-      />
-
-      <text x="600" :y="layoutMetrics.bodyY" text-anchor="middle" class="svg-subline">{{ inviteSubline1 }}</text>
-      <text x="600" :y="layoutMetrics.bodyY + 40" text-anchor="middle" class="svg-subline">{{ inviteSubline2 }}</text>
-
-      <!-- Couple names centered as one unit -->
-      <text
-        x="600"
-        :y="layoutMetrics.coupleY"
-        text-anchor="middle"
-        class="svg-couple"
-      >Đình Dương <tspan class="svg-couple-heart" dy="-14">♥</tspan><tspan dy="14"> Thu Hà</tspan></text>
-
-      <!-- Event details card -->
-      <g>
-        <rect
-          x="104"
-          :y="layoutMetrics.boxY"
-          width="992"
-          :height="layoutMetrics.boxH"
-          rx="16"
-          fill="#fbf8f2"
-          stroke="#dfd0bc"
-          stroke-width="1.6"
-          filter="url(#eventBoxShadow)"
+        <line
+          x1="270"
+          :y1="layoutMetrics.dottedY"
+          x2="930"
+          :y2="layoutMetrics.dottedY"
+          stroke="#b99f7d"
+          stroke-width="2"
+          stroke-dasharray="4 6"
         />
 
-        <text x="600" :y="layoutMetrics.boxY + 72" text-anchor="middle" class="svg-event-date">{{ eventInfo.dateLine }}</text>
-        <text x="600" :y="layoutMetrics.boxY + 116" text-anchor="middle" class="svg-event-lunar">{{ eventInfo.lunarLine }}</text>
-
-        <line x1="146" :y1="layoutMetrics.boxY + 144" x2="1054" :y2="layoutMetrics.boxY + 144" stroke="#e5d8c6" stroke-width="1.2" />
-        <line x1="146" :y1="layoutMetrics.boxY + 284" x2="1054" :y2="layoutMetrics.boxY + 284" stroke="#e5d8c6" stroke-width="1.2" />
-        <line x1="600" :y1="layoutMetrics.boxY + 162" x2="600" :y2="layoutMetrics.boxY + 266" stroke="#e5d8c6" stroke-width="1.2" />
-
-        <text x="372" :y="layoutMetrics.boxY + 202" text-anchor="middle" class="svg-time-val">{{ eventInfo.leftTime }}</text>
-        <text x="372" :y="layoutMetrics.boxY + 248" text-anchor="middle" class="svg-time-lbl">{{ eventInfo.leftLabel }}</text>
-
-        <text x="828" :y="layoutMetrics.boxY + 202" text-anchor="middle" class="svg-time-val">{{ eventInfo.rightTime }}</text>
-        <text x="828" :y="layoutMetrics.boxY + 248" text-anchor="middle" class="svg-time-lbl">{{ eventInfo.rightLabel }}</text>
-
-        <text x="600" :y="layoutMetrics.boxY + 330" text-anchor="middle" class="svg-venue-label">ĐỊA ĐIỂM TỔ CHỨC</text>
         <text
           x="600"
-          :y="layoutMetrics.boxY + 378"
+          :y="layoutMetrics.announcementCoupleY"
           text-anchor="middle"
-          class="svg-venue-name"
-          :style="{ fontSize: `${layoutMetrics.venueFontSize}px` }"
-        >
-          {{ eventInfo.venueName }}
-        </text>
-        <text x="600" :y="layoutMetrics.boxY + 424" text-anchor="middle" class="svg-venue-addr">{{ eventInfo.venueAddress }}</text>
-      </g>
+          class="svg-couple"
+        >Đình Dương <tspan class="svg-couple-heart" dy="-14">♥</tspan><tspan dy="14"> Thu Hà</tspan></text>
 
-      <!-- Footer -->
-      <g>
-        <line x1="260" :y1="layoutMetrics.footerLineY" x2="572" :y2="layoutMetrics.footerLineY" stroke="#d3bea3" stroke-width="1.2" />
-        <line x1="628" :y1="layoutMetrics.footerLineY" x2="940" :y2="layoutMetrics.footerLineY" stroke="#d3bea3" stroke-width="1.2" />
-        <circle cx="584" :cy="layoutMetrics.footerLineY" r="2.2" fill="#b4956b" />
-        <circle cx="616" :cy="layoutMetrics.footerLineY" r="2.2" fill="#b4956b" />
-        <rect
-          x="-5.5"
-          y="-5.5"
-          width="11"
-          height="11"
-          fill="none"
-          stroke="#b4956b"
-          stroke-width="1.2"
-          :transform="`translate(600, ${layoutMetrics.footerLineY}) rotate(45)`"
+        <text x="600" :y="layoutMetrics.announcementSublineY" text-anchor="middle" class="svg-subline svg-announcement-subline">{{ announcementSubline }}</text>
+
+        <g>
+          <rect
+            x="104"
+            :y="layoutMetrics.announcementBoxY"
+            width="992"
+            :height="layoutMetrics.announcementBoxH"
+            rx="16"
+            fill="#fbf8f2"
+            stroke="#dfd0bc"
+            stroke-width="1.6"
+            filter="url(#eventBoxShadow)"
+          />
+
+          <text x="600" :y="layoutMetrics.announcementBoxY + 78" text-anchor="middle" class="svg-venue-label">HÔN LỄ ĐƯỢC TỔ CHỨC</text>
+          <text x="600" :y="layoutMetrics.announcementBoxY + 146" text-anchor="middle" class="svg-event-date">{{ eventInfo.dateLine }}</text>
+          <text x="600" :y="layoutMetrics.announcementBoxY + 194" text-anchor="middle" class="svg-event-lunar">{{ eventInfo.lunarLine }}</text>
+
+          <line x1="180" :y1="layoutMetrics.announcementBoxY + 242" x2="1020" :y2="layoutMetrics.announcementBoxY + 242" stroke="#e5d8c6" stroke-width="1.2" />
+
+          <text
+            v-for="(line, idx) in layoutMetrics.announcementLines"
+            :key="idx"
+            x="600"
+            :y="layoutMetrics.announcementMsgStartY + idx * layoutMetrics.announcementLineHeight"
+            text-anchor="middle"
+            class="svg-announcement-msg"
+          >
+            {{ line }}
+          </text>
+        </g>
+
+        <!-- Footer -->
+        <g>
+          <line x1="260" :y1="layoutMetrics.announcementFooterLineY" x2="572" :y2="layoutMetrics.announcementFooterLineY" stroke="#d3bea3" stroke-width="1.2" />
+          <line x1="628" :y1="layoutMetrics.announcementFooterLineY" x2="940" :y2="layoutMetrics.announcementFooterLineY" stroke="#d3bea3" stroke-width="1.2" />
+          <circle cx="584" :cy="layoutMetrics.announcementFooterLineY" r="2.2" fill="#b4956b" />
+          <circle cx="616" :cy="layoutMetrics.announcementFooterLineY" r="2.2" fill="#b4956b" />
+          <rect
+            x="-5.5"
+            y="-5.5"
+            width="11"
+            height="11"
+            fill="none"
+            stroke="#b4956b"
+            stroke-width="1.2"
+            :transform="`translate(600, ${layoutMetrics.announcementFooterLineY}) rotate(45)`"
+          />
+
+          <text x="600" :y="layoutMetrics.announcementFooterLineY + 60" text-anchor="middle" class="svg-footer-note">
+            {{ footerNote }}
+          </text>
+          <text x="600" :y="layoutMetrics.announcementFooterLineY + 108" text-anchor="middle" class="svg-footer-cta">
+            {{ footerCta }}
+          </text>
+        </g>
+      </template>
+
+      <!-- Guest & invitation body -->
+      <template v-else>
+        <text x="600" y="594" text-anchor="middle" class="svg-lead">{{ inviteLead }}</text>
+
+        <text
+          v-for="(line, idx) in layoutMetrics.guestLines"
+          :key="idx"
+          x="600"
+          :y="layoutMetrics.guestStartY + idx * layoutMetrics.guestLineHeight"
+          text-anchor="middle"
+          class="svg-guest-name"
+          :style="{ fontSize: `${layoutMetrics.guestFontSize}px` }"
+        >
+          {{ line }}
+        </text>
+
+        <line
+          x1="270"
+          :y1="layoutMetrics.dottedY"
+          x2="930"
+          :y2="layoutMetrics.dottedY"
+          stroke="#b99f7d"
+          stroke-width="2"
+          stroke-dasharray="4 6"
         />
 
-        <text x="600" :y="layoutMetrics.footerLineY + 56" text-anchor="middle" class="svg-footer-note">
-          Sự hiện diện của Quý khách là niềm vinh dự của gia đình chúng tôi!
-        </text>
-        <text x="600" :y="layoutMetrics.footerLineY + 102" text-anchor="middle" class="svg-footer-cta">
-          RẤT HÂN HẠNH ĐƯỢC ĐÓN TIẾP!
-        </text>
-      </g>
+        <text x="600" :y="layoutMetrics.bodyY" text-anchor="middle" class="svg-subline">{{ inviteSubline1 }}</text>
+        <text x="600" :y="layoutMetrics.bodyY + 40" text-anchor="middle" class="svg-subline">{{ inviteSubline2 }}</text>
+
+        <!-- Couple names centered as one unit -->
+        <text
+          x="600"
+          :y="layoutMetrics.coupleY"
+          text-anchor="middle"
+          class="svg-couple"
+        >Đình Dương <tspan class="svg-couple-heart" dy="-14">♥</tspan><tspan dy="14"> Thu Hà</tspan></text>
+
+        <!-- Event details card -->
+        <g>
+          <rect
+            x="104"
+            :y="layoutMetrics.boxY"
+            width="992"
+            :height="layoutMetrics.boxH"
+            rx="16"
+            fill="#fbf8f2"
+            stroke="#dfd0bc"
+            stroke-width="1.6"
+            filter="url(#eventBoxShadow)"
+          />
+
+          <text x="600" :y="layoutMetrics.boxY + 72" text-anchor="middle" class="svg-event-date">{{ eventInfo.dateLine }}</text>
+          <text x="600" :y="layoutMetrics.boxY + 116" text-anchor="middle" class="svg-event-lunar">{{ eventInfo.lunarLine }}</text>
+
+          <line x1="146" :y1="layoutMetrics.boxY + 144" x2="1054" :y2="layoutMetrics.boxY + 144" stroke="#e5d8c6" stroke-width="1.2" />
+          <line x1="146" :y1="layoutMetrics.boxY + 284" x2="1054" :y2="layoutMetrics.boxY + 284" stroke="#e5d8c6" stroke-width="1.2" />
+          <line x1="600" :y1="layoutMetrics.boxY + 162" x2="600" :y2="layoutMetrics.boxY + 266" stroke="#e5d8c6" stroke-width="1.2" />
+
+          <text x="372" :y="layoutMetrics.boxY + 202" text-anchor="middle" class="svg-time-val">{{ eventInfo.leftTime }}</text>
+          <text x="372" :y="layoutMetrics.boxY + 248" text-anchor="middle" class="svg-time-lbl">{{ eventInfo.leftLabel }}</text>
+
+          <text x="828" :y="layoutMetrics.boxY + 202" text-anchor="middle" class="svg-time-val">{{ eventInfo.rightTime }}</text>
+          <text x="828" :y="layoutMetrics.boxY + 248" text-anchor="middle" class="svg-time-lbl">{{ eventInfo.rightLabel }}</text>
+
+          <text x="600" :y="layoutMetrics.boxY + 330" text-anchor="middle" class="svg-venue-label">ĐỊA ĐIỂM TỔ CHỨC</text>
+          <text
+            x="600"
+            :y="layoutMetrics.boxY + 378"
+            text-anchor="middle"
+            class="svg-venue-name"
+            :style="{ fontSize: `${layoutMetrics.venueFontSize}px` }"
+          >
+            {{ eventInfo.venueName }}
+          </text>
+          <text x="600" :y="layoutMetrics.boxY + 424" text-anchor="middle" class="svg-venue-addr">{{ eventInfo.venueAddress }}</text>
+        </g>
+
+        <!-- Footer -->
+        <g>
+          <line x1="260" :y1="layoutMetrics.footerLineY" x2="572" :y2="layoutMetrics.footerLineY" stroke="#d3bea3" stroke-width="1.2" />
+          <line x1="628" :y1="layoutMetrics.footerLineY" x2="940" :y2="layoutMetrics.footerLineY" stroke="#d3bea3" stroke-width="1.2" />
+          <circle cx="584" :cy="layoutMetrics.footerLineY" r="2.2" fill="#b4956b" />
+          <circle cx="616" :cy="layoutMetrics.footerLineY" r="2.2" fill="#b4956b" />
+          <rect
+            x="-5.5"
+            y="-5.5"
+            width="11"
+            height="11"
+            fill="none"
+            stroke="#b4956b"
+            stroke-width="1.2"
+            :transform="`translate(600, ${layoutMetrics.footerLineY}) rotate(45)`"
+          />
+
+          <text x="600" :y="layoutMetrics.footerLineY + 56" text-anchor="middle" class="svg-footer-note">
+            {{ footerNote }}
+          </text>
+          <text x="600" :y="layoutMetrics.footerLineY + 102" text-anchor="middle" class="svg-footer-cta">
+            {{ footerCta }}
+          </text>
+        </g>
+      </template>
     </svg>
   </article>
 </template>
@@ -831,6 +1058,18 @@ defineExpose({ downloadJpg })
   font-weight: 500;
   font-size: 25px;
   letter-spacing: 1px;
+}
+
+.svg-announcement-subline {
+  letter-spacing: 1.5px;
+}
+
+.svg-announcement-msg {
+  fill: #4c3a2b;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 33px;
 }
 
 .svg-couple {
