@@ -28,6 +28,20 @@ export function validateInvitation(body: Record<string, unknown>) {
     throw createError({ statusCode: 400, statusMessage: 'Trang thai gui khong hop le.' })
   }
   if (body.twoMeals !== undefined && typeof body.twoMeals !== 'boolean') throw createError({ statusCode: 400, statusMessage: 'Lua chon hai bua khong hop le.' })
+  const parseOptionalGuestCount = (raw: unknown, label: string) => {
+    if (raw === undefined) return undefined
+    if (raw === null || raw === '') return null
+    const parsed = Number(raw)
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 100) {
+      throw createError({ statusCode: 400, statusMessage: `${label} phai la so nguyen tu 0 den 100.` })
+    }
+    return parsed
+  }
+  const ceremonyGuestCount = parseOptionalGuestCount(body.ceremonyGuestCount, 'So nguoi bua chinh')
+  let rehearsalGuestCount = parseOptionalGuestCount(body.rehearsalGuestCount, 'So nguoi bua ap rap')
+  if (body.twoMeals !== true && rehearsalGuestCount !== undefined && rehearsalGuestCount !== null) {
+    rehearsalGuestCount = 0
+  }
   let giftType: 'cash' | 'other' | null = null
   if (body.giftType !== undefined && body.giftType !== null && body.giftType !== '') {
     if (body.giftType !== 'cash' && body.giftType !== 'other') {
@@ -48,5 +62,20 @@ export function validateInvitation(body: Record<string, unknown>) {
   if ((body.giftNote !== undefined && body.giftNote !== null && typeof body.giftNote !== 'string') || giftNote.length > 2000) {
     throw createError({ statusCode: 400, statusMessage: 'Ghi chu tien mung toi da 2000 ky tu.' })
   }
-  return { twoMeals: body.twoMeals === true, giftType, giftAmount, giftNote: giftNote || null, senderName, inviterRole, guestName, note: note || null, personalMessage: personalMessage || null, deliveryType: body.deliveryType, invitationSide: body.invitationSide, isSent: body.isSent }
+  return {
+    twoMeals: body.twoMeals === true,
+    ...(ceremonyGuestCount !== undefined ? { ceremonyGuestCount } : {}),
+    ...(rehearsalGuestCount !== undefined ? { rehearsalGuestCount } : {}),
+    giftType,
+    giftAmount,
+    giftNote: giftNote || null,
+    senderName,
+    inviterRole,
+    guestName,
+    note: note || null,
+    personalMessage: personalMessage || null,
+    deliveryType: body.deliveryType,
+    invitationSide: body.invitationSide,
+    isSent: body.isSent
+  }
 }

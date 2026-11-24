@@ -13,6 +13,8 @@ type Invitation = {
   note: string | null
   personalMessage: string | null
   twoMeals: boolean
+  ceremonyGuestCount: number | null
+  rehearsalGuestCount: number | null
   giftType: 'cash' | 'other' | null
   giftAmount: number | null
   giftNote: string | null
@@ -67,10 +69,12 @@ const filtered = computed(() => invitations.value.filter((item) => {
     && item.invitationSide === sideFilter.value
 }))
 const rehearsalGuestCount = computed(() => filtered.value.reduce((sum, item) => {
+  if (item.rehearsalGuestCount !== null && item.rehearsalGuestCount !== undefined) return sum + item.rehearsalGuestCount
   if (item.response?.attendanceStatus !== 'attending') return sum
   return item.response.attendRehearsal ? sum + item.response.guestCount : sum
 }, 0))
 const ceremonyGuestCount = computed(() => filtered.value.reduce((sum, item) => {
+  if (item.ceremonyGuestCount !== null && item.ceremonyGuestCount !== undefined) return sum + item.ceremonyGuestCount
   if (item.response?.attendanceStatus !== 'attending') return sum
   return (item.response.attendCeremony || !item.response.attendRehearsal) ? sum + item.response.guestCount : sum
 }, 0))
